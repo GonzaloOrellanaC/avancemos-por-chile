@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -12,21 +13,24 @@ import uploadRoutes from './src/routes/uploadRoutes.ts';
 import pageRoutes from './src/routes/pageRoutes.ts';
 import { errorHandler } from './src/middleware/errorHandler.ts';
 
-dotenv.config();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function startServer() {
   await connectDB();
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.use(helmet({
     contentSecurityPolicy: false,
   }));
   app.use(cors());
   app.use(express.json());
+
+  console.log(path.join(process.cwd(), 'public'))
+
+  // Serve public folder as static (for public assets)
+  app.use('/public', express.static(path.join(process.cwd(), 'public')));
 
   // Serve static uploads
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));

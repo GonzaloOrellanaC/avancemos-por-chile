@@ -48,7 +48,8 @@ const Editor = () => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/posts/${id}`, {
+      const { default: fetchApi } = await import('../lib/api');
+      const response = await fetchApi(`/api/posts/${id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -93,7 +94,8 @@ const Editor = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/upload', {
+      const { default: fetchApi } = await import('../lib/api');
+      const response = await fetchApi('/api/upload', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -108,7 +110,12 @@ const Editor = () => {
         }
         toast.success('Archivo subido correctamente');
       } else {
-        toast.error('Error al subir archivo');
+        try {
+          const err = await response.json();
+          toast.error(err.message || 'Error al subir archivo');
+        } catch (e) {
+          toast.error('Error al subir archivo');
+        }
       }
     } catch (error) {
       toast.error('Error de conexión');
@@ -124,7 +131,8 @@ const Editor = () => {
       const url = id ? `/api/posts/${id}` : '/api/posts';
       const method = id ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const { default: fetchApi } = await import('../lib/api');
+      const response = await fetchApi(url, {
         method,
         headers: { 
           'Content-Type': 'application/json',

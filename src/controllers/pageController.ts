@@ -1,6 +1,6 @@
-import { Response } from 'express';
+import type { Response } from 'express';
 import { Page } from '../models/Page.ts';
-import { AuthRequest } from '../middleware/auth.ts';
+import type { AuthRequest } from '../middleware/auth.ts';
 import slugify from 'slugify';
 
 export const getPages = async (req: AuthRequest, res: Response) => {

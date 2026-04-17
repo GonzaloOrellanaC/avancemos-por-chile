@@ -23,7 +23,8 @@ const DynamicPage = () => {
       setIsLoading(true);
       try {
         const targetSlug = slug || 'home';
-        const response = await fetch(`/api/pages/${targetSlug}`);
+        const { default: fetchApi } = await import('../lib/api');
+        const response = await fetchApi(`/api/pages/${targetSlug}`);
         if (response.ok) {
           const data = await response.json();
           setPage(data);

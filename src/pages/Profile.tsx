@@ -41,13 +41,14 @@ const Profile = () => {
     const fetchData = async () => {
       try {
         // Fetch Posts
-        const postsRes = await fetch('/api/posts/my-posts', {
+        const { default: fetchApi } = await import('../lib/api');
+        const postsRes = await fetchApi('/api/posts/my-posts', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (postsRes.ok) setPosts(await postsRes.json());
 
         // Fetch Pages
-        const pagesRes = await fetch('/api/pages', {
+        const pagesRes = await fetchApi('/api/pages', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (pagesRes.ok) setPages(await pagesRes.json());
@@ -73,7 +74,8 @@ const Profile = () => {
     if (!window.confirm('¿Estás seguro de eliminar esta publicación?')) return;
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/posts/${id}`, {
+      const { default: fetchApi } = await import('../lib/api');
+      const response = await fetchApi(`/api/posts/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -90,7 +92,8 @@ const Profile = () => {
     if (!window.confirm('¿Estás seguro de eliminar esta página?')) return;
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/pages/${id}`, {
+      const { default: fetchApi } = await import('../lib/api');
+      const response = await fetchApi(`/api/pages/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -100,6 +103,43 @@ const Profile = () => {
       }
     } catch (error) {
       toast.error('Error al eliminar');
+    }
+  };
+
+  // Create new user (admin only)
+  const [newName, setNewName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newRole, setNewRole] = useState<'editor'|'admin'>('editor');
+  const [isCreating, setIsCreating] = useState(false);
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName || !newEmail || !newPassword) return toast.error('Completa todos los campos');
+    setIsCreating(true);
+    try {
+      const token = localStorage.getItem('token');
+      const { default: fetchApi } = await import('../lib/api');
+      const response = await fetchApi('/api/auth/create-user', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: newName, email: newEmail, password: newPassword, role: newRole })
+      });
+
+      if (response.ok) {
+        toast.success('Usuario creado');
+        setNewName(''); setNewEmail(''); setNewPassword(''); setNewRole('editor');
+      } else {
+        const err = await response.json();
+        toast.error(err.message || 'Error al crear usuario');
+      }
+    } catch (error) {
+      toast.error('Error de conexión');
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -137,6 +177,24 @@ const Profile = () => {
 
           {/* Main Content */}
           <div className="lg:col-span-3 space-y-8">
+            {/* User creation (admin only) */}
+            {user?.role === 'admin' && (
+              <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
+                <h2 className="text-xl font-bold text-brand-blue mb-4">Crear nuevo usuario</h2>
+                <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                  <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nombre" className="p-3 bg-gray-50 rounded-lg" />
+                  <input value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="Correo" className="p-3 bg-gray-50 rounded-lg" />
+                  <input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Contraseña" type="password" className="p-3 bg-gray-50 rounded-lg" />
+                  <div className="flex items-center space-x-2">
+                    <select value={newRole} onChange={(e) => setNewRole(e.target.value as any)} className="p-3 bg-gray-50 rounded-lg">
+                      <option value="editor">Editor</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                    <button disabled={isCreating} className="bg-brand-blue text-white px-4 py-2 rounded-lg font-bold">{isCreating ? 'Creando...' : 'Crear'}</button>
+                  </div>
+                </form>
+              </div>
+            )}
             {/* Pages Management */}
             <div className="bg-white p-8 rounded-2xl shadow-md border border-gray-100">
               <div className="flex justify-between items-center mb-8">

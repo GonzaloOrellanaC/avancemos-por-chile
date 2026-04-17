@@ -48,6 +48,11 @@ const Footer = () => {
 
         <div className="mt-12 pt-8 border-t border-gray-700 text-center text-gray-400 text-sm">
           <p>&copy; {new Date().getFullYear()} Avancemos Por Chile. Todos los derechos reservados.</p>
+          <p className="mt-2">Diseñado y desarrollado por <a href="https://omtecnologia.cl" target="_blank" rel="noopener noreferrer" className="text-gray-300 hover:text-white font-semibold">OM Tecnología</a></p>
+          <div className="mt-1">
+            <Link to="/privacy" className="text-gray-400 hover:text-white mr-4">Política de Privacidad</Link>
+            <Link to="/legal" className="text-gray-400 hover:text-white">Aviso Legal</Link>
+          </div>
         </div>
       </div>
     </footer>

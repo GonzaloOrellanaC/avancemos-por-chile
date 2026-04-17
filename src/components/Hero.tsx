@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
+const api = (import.meta as any).env.VITE_API_URL;
+
 const Hero = () => {
   const images = [
-    { url: '/100.jpg', animation: { x: [-20, 20], scale: 1.1 } }, // Pan right
-    { url: '/101.jpg', animation: { x: [20, -20], scale: 1.1 } }, // Pan left
-    { url: '/102.jpg', animation: { scale: [1, 1.2] } }           // Zoom in
+    { url: `${api}/public/100.JPG`, animation: { x: [-20, 20], scale: 1.1 } }, // Pan right
+    { url: `${api}/public/101.JPG`, animation: { x: [20, -20], scale: 1.1 } }, // Pan left
+    { url: `${api}/public/102.JPG`, animation: { scale: [1, 1.2] } }           // Zoom in
   ];
 
   const [currentIndex, setCurrentIndex] = useState(0);

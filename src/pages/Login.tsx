@@ -25,7 +25,8 @@ const Login = () => {
   const onSubmit = async (data: LoginForm) => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/auth/login', {
+      const { default: fetchApi } = await import('../lib/api');
+      const response = await fetchApi('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),

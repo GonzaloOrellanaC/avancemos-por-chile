@@ -16,7 +16,7 @@ type Form = z.infer<typeof schema>;
 const ForgotPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSent, setIsSent] = useState(false);
-  
+
   const { register, handleSubmit, formState: { errors } } = useForm<Form>({
     resolver: zodResolver(schema),
   });
@@ -24,7 +24,8 @@ const ForgotPassword = () => {
   const onSubmit = async (data: Form) => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/auth/forgot-password', {
+      const { default: fetchApi } = await import('../lib/api');
+      const response = await fetchApi('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -32,9 +33,10 @@ const ForgotPassword = () => {
 
       if (response.ok) {
         setIsSent(true);
-        toast.success('Correo enviado');
+        toast.success('Si el correo existe, recibirás instrucciones');
       } else {
-        toast.error('Error al procesar la solicitud');
+        const err = await response.json();
+        toast.error(err.message || 'Error al solicitar recuperación');
       }
     } catch (error) {
       toast.error('Error de conexión');
@@ -53,6 +55,9 @@ const ForgotPassword = () => {
         {!isSent ? (
           <>
             <div className="text-center mb-8">
+              <div className="bg-brand-blue/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Mail className="text-brand-blue" size={32} />
+              </div>
               <h1 className="text-3xl font-bold text-brand-blue">Recuperar Contraseña</h1>
               <p className="text-gray-500 mt-2">Ingresa tu correo para recibir un enlace de recuperación</p>
             </div>

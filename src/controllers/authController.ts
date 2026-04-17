@@ -1,8 +1,9 @@
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.ts';
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
+import type { AuthRequest } from '../middleware/auth.ts';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_here';
 
@@ -29,6 +30,27 @@ export const register = async (req: Request, res: Response) => {
     if (existingUser) return res.status(400).json({ message: 'El usuario ya existe' });
 
     const user = new User({ name, email, password });
+    await user.save();
+    res.status(201).json({ message: 'Usuario creado exitosamente' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al crear usuario' });
+  }
+};
+
+export const createUser = async (req: AuthRequest, res: Response) => {
+  try {
+    // Only admins can create users
+    if (!req.user || (req.user as any).role !== 'admin') {
+      return res.status(403).json({ message: 'No autorizado' });
+    }
+
+    const { name, email, password, role } = req.body;
+    if (!name || !email || !password) return res.status(400).json({ message: 'Faltan datos requeridos' });
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) return res.status(400).json({ message: 'El usuario ya existe' });
+
+    const user = new User({ name, email, password, role: role === 'admin' ? 'admin' : 'editor' });
     await user.save();
     res.status(201).json({ message: 'Usuario creado exitosamente' });
   } catch (error) {

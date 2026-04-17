@@ -41,24 +41,34 @@ const ResetPassword = () => {
       if (response.ok) {
         toast.success('Contraseña actualizada');
         navigate('/login');
-      } else {
-        toast.error('Error al actualizar contraseña');
+      try {
+        const { default: fetchApi } = await import('../lib/api');
+        const response = await fetchApi('/api/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, password }),
+        });
+
+        if (response.ok) {
+          toast.success('Contraseña actualizada');
+          navigate('/login');
+        } else {
+          const err = await response.json();
+          toast.error(err.message || 'Error al resetear contraseña');
+        }
+      } catch (error) {
+        toast.error('Error de conexión');
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
+    }
+    }catch (error) {
       toast.error('Error de conexión');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  if (!token) {
-    return (
-      <div className="min-h-screen pt-32 text-center">
-        <h1 className="text-2xl font-bold text-brand-blue">Enlace de recuperación inválido o expirado</h1>
-        <button onClick={() => navigate('/login')} className="text-brand-red hover:underline mt-4">Volver al inicio</button>
-      </div>
-    );
   }
+
 
   return (
     <div className="min-h-screen pt-24 pb-12 flex items-center justify-center bg-gray-50">

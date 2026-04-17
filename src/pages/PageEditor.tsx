@@ -43,7 +43,8 @@ const PageEditor = () => {
   const fetchPage = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/pages/${slug}`);
+      const { default: fetchApi } = await import('../lib/api');
+      const response = await fetchApi(`/api/pages/${slug}`);
       if (response.ok) {
         const data = await response.json();
         setPageId(data._id);
@@ -120,7 +121,8 @@ const PageEditor = () => {
     setIsSaving(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/pages', {
+      const { default: fetchApi } = await import('../lib/api');
+      const response = await fetchApi('/api/pages', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

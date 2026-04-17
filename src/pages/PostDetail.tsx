@@ -26,7 +26,8 @@ const PostDetail = () => {
   useEffect(() => {
     const fetchPost = async () => {
       try {
-        const response = await fetch(`/api/posts`);
+        const { default: fetchApi } = await import('../lib/api');
+        const response = await fetchApi(`/api/posts`);
         const data = await response.json();
         const found = data.find((p: any) => p.slug === slug);
         setPost(found);

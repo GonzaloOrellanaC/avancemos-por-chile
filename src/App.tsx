@@ -11,6 +11,8 @@ import PageEditor from './pages/PageEditor';
 import PostDetail from './pages/PostDetail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Privacy from './pages/Privacy';
+import Legal from './pages/Legal';
 import Header from './components/Header';
 import Footer from './components/Footer';
 
@@ -32,6 +34,8 @@ export default function App() {
             <Route path="/editor" element={<Editor />} />
             <Route path="/editor/:id" element={<Editor />} />
             <Route path="/page-editor/:slug" element={<PageEditor />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/legal" element={<Legal />} />
           </Routes>
         </main>
         <Footer />
