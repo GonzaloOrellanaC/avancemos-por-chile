@@ -5,7 +5,6 @@ import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
 import { connectDB } from './src/lib/db.ts';
 import authRoutes from './src/routes/authRoutes.ts';
 import postRoutes from './src/routes/postRoutes.ts';

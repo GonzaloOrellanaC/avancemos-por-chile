@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "start": "pm2 start server.ts --name avancemos-por-chile --interpreter tsx --node-args=\"--env-file=.env\"",
     "dev": "tsx server.ts",
     "seed": "tsx seed.ts",
     "seed-home": "tsx seedHome.ts",

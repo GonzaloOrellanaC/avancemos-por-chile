@@ -1,7 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Instagram, AtSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+
+const TikTokIcon = ({ size = 24, className = "" }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5" />
+  </svg>
+);
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -22,6 +38,24 @@ const Header = () => {
     { name: 'Contacto', path: '/#contacto' },
   ];
 
+  const socialLinks = [
+    { 
+      name: 'Instagram', 
+      url: 'https://www.instagram.com/avancemosporchile_cl',
+      icon: <Instagram size={20} />
+    },
+    { 
+      name: 'TikTok', 
+      url: 'https://www.tiktok.com/@avancemosporchile',
+      icon: <TikTokIcon size={20} />
+    },
+    { 
+      name: 'Threads', 
+      url: 'https://www.threads.net/@avancemosporchile_cl',
+      icon: <AtSign size={20} />
+    }
+  ];
+
   const isHomePage = location.pathname === '/';
 
   return (
@@ -40,7 +74,23 @@ const Header = () => {
         </Link>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:flex space-x-8 items-center">
+        <nav className="hidden md:flex space-x-6 items-center">
+          <div className="flex items-center space-x-4 mr-4">
+            {socialLinks.map((social) => (
+              <a
+                key={social.name}
+                href={social.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`transition-colors hover:text-brand-red ${
+                  scrolled || !isHomePage ? 'text-brand-blue' : 'text-white'
+                }`}
+                title={social.name}
+              >
+                {social.icon}
+              </a>
+            ))}
+          </div>
           {navLinks.map((link) => (
             <Link
               key={link.name}
@@ -104,6 +154,19 @@ const Header = () => {
               >
                 Ingresar
               </Link>
+              <div className="flex justify-center space-x-6 pt-4 border-t border-gray-100">
+                {socialLinks.map((social) => (
+                  <a
+                    key={social.name}
+                    href={social.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-brand-blue hover:text-brand-red transition-colors"
+                  >
+                    {social.icon}
+                  </a>
+                ))}
+              </div>
             </div>
           </motion.div>
         )}
