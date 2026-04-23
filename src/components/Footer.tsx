@@ -59,7 +59,7 @@ const Footer = () => {
                 href="https://www.instagram.com/avancemosporchile_cl" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-gray-300 hover:text-white transition-colors"
+                className="text-white hover:text-brand-red transition-colors"
                 title="Instagram"
               >
                 <Instagram size={24} />
@@ -68,7 +68,7 @@ const Footer = () => {
                 href="https://www.tiktok.com/@avancemosporchile" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-gray-300 hover:text-white transition-colors"
+                className="text-white hover:text-brand-red transition-colors"
                 title="TikTok"
               >
                 <TikTokIcon size={24} />
@@ -77,10 +77,30 @@ const Footer = () => {
                 href="https://www.threads.net/@avancemosporchile_cl" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-gray-300 hover:text-white transition-colors"
+                className="text-white hover:text-brand-red transition-colors"
                 title="Threads"
               >
                 <AtSign size={24} />
+              </a>
+              <a
+                href="https://www.youtube.com/@AvancemosPorChile"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white hover:text-brand-red transition-colors"
+                title="YouTube"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M21.8 8s-.2-1.6-.8-2.3c-.7-.9-1.5-.9-1.9-1C16.5 4 12 4 12 4h-.1s-4.5 0-7.1.6c-.4.1-1.2.1-1.9 1C2.4 6.4 2.2 8 2.2 8S2 9.9 2 11.9v.2C2 14.1 2.2 16 2.2 16s.2 1.6.8 2.3c.7.9 1.6.9 2 1 1.4.2 6.8.6 6.8.6s4.5 0 7.1-.6c.4-.1 1.2-.1 1.9-1 .6-.7.8-2.3.8-2.3s.2-1.9.2-3.9v-.2c0-2-.2-3.9-.2-3.9zM10 15V9l5 3-5 3z"/></svg>
+              </a>
+              <a
+                href="https://x.com/AvancemosPorCL"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white hover:text-brand-red transition-colors"
+                title="X"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-twitter-x" viewBox="0 0 16 16">
+                  <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865z"/>
+                </svg>
               </a>
             </div>
           </div>

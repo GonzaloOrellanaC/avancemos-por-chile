@@ -5,13 +5,15 @@
   "type": "module",
   "scripts": {
     "start": "pm2 start server.ts --name avancemos-por-chile --interpreter tsx --node-args=\"--env-file=.env\"",
-    "dev": "tsx server.ts",
+    "dev-server": "tsx server.ts",
+    "dev-client": "vite",
     "seed": "tsx seed.ts",
     "seed-home": "tsx seedHome.ts",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "dev": "concurrently \"npm run dev-server\" \"npm run dev-client\""
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
@@ -20,6 +22,7 @@
     "@vitejs/plugin-react": "^5.0.4",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
+    "concurrently": "^9.2.1",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",

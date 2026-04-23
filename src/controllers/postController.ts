@@ -2,11 +2,25 @@ import type { Response } from 'express';
 import { Post } from '../models/Post.ts';
 import type { AuthRequest } from '../middleware/auth.ts';
 import slugify from 'slugify';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_here';
 
 export const getPosts = async (req: AuthRequest, res: Response) => {
   try {
-    const posts = await Post.find({ status: 'published' }).populate('author', 'name').sort({ createdAt: -1 });
-    res.json(posts);
+    const page = parseInt(String(req.query.page || '1'), 10) || 1;
+    const limit = Math.min(parseInt(String(req.query.limit || '10'), 10) || 10, 50);
+    const filter = { status: 'published' };
+
+    const total = await Post.countDocuments(filter);
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const posts = await Post.find(filter)
+      .populate('author', 'name')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    res.json({ posts, total, page, totalPages, limit });
   } catch (error) {
     res.status(500).json({ message: 'Error al obtener publicaciones' });
   }
@@ -18,6 +32,66 @@ export const getMyPosts = async (req: AuthRequest, res: Response) => {
     res.json(posts);
   } catch (error) {
     res.status(500).json({ message: 'Error al obtener tus publicaciones' });
+  }
+};
+
+export const getPostById = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const post = await Post.findById(id).populate('author', 'name email role');
+    if (!post) return res.status(404).json({ message: 'Publicación no encontrada' });
+
+    // If published, return publicly
+    if (post.status === 'published') {
+      return res.json(post);
+    }
+
+    // For drafts, require a valid token and either author or admin
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ message: 'No autorizado' });
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded: any = jwt.verify(token, JWT_SECRET);
+      const userId = decoded.id;
+      const role = decoded.role;
+      if (role === 'admin' || userId === String((post.author as any)._id || post.author)) {
+        return res.json(post);
+      }
+      return res.status(403).json({ message: 'No tienes permiso para ver este borrador' });
+    } catch (err) {
+      return res.status(401).json({ message: 'Token inválido' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener la publicación' });
+  }
+};
+
+export const getPostBySlug = async (req: AuthRequest, res: Response) => {
+  try {
+    const { slug } = req.params;
+    const post = await Post.findOne({ slug }).populate('author', 'name email role');
+    if (!post) return res.status(404).json({ message: 'Publicación no encontrada' });
+
+    if (post.status === 'published') {
+      return res.json(post);
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ message: 'No autorizado' });
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded: any = jwt.verify(token, JWT_SECRET);
+      const userId = decoded.id;
+      const role = decoded.role;
+      if (role === 'admin' || userId === String((post.author as any)._id || post.author)) {
+        return res.json(post);
+      }
+      return res.status(403).json({ message: 'No tienes permiso para ver este borrador' });
+    } catch (err) {
+      return res.status(401).json({ message: 'Token inválido' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener la publicación por slug' });
   }
 };
 
@@ -70,5 +144,26 @@ export const deletePost = async (req: AuthRequest, res: Response) => {
     res.json({ message: 'Publicación eliminada' });
   } catch (error) {
     res.status(500).json({ message: 'Error al eliminar publicación' });
+  }
+};
+
+export const getPostsByAuthor = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const page = parseInt(String(req.query.page || '1'), 10) || 1;
+    const limit = Math.min(parseInt(String(req.query.limit || '10'), 10) || 10, 50);
+    const filter = { author: id, status: 'published' };
+
+    const total = await Post.countDocuments(filter);
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const posts = await Post.find(filter)
+      .populate('author', 'name')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    res.json({ posts, total, page, totalPages, limit });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener publicaciones del autor' });
   }
 };

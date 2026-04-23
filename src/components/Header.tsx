@@ -1,27 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Instagram, AtSign } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { Menu, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-const TikTokIcon = ({ size = 24, className = "" }) => (
-  <svg 
-    width={size} 
-    height={size} 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
-    className={className}
-  >
-    <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5" />
-  </svg>
-);
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [loggedUser, setLoggedUser] = useState<any>(null);
   const location = useLocation();
 
   useEffect(() => {
@@ -29,7 +15,22 @@ const Header = () => {
       setScrolled(window.scrollY > 20);
     };
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    const stored = localStorage.getItem('user');
+    if (stored) setLoggedUser(JSON.parse(stored));
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'user') setLoggedUser(e.newValue ? JSON.parse(e.newValue) : null);
+    };
+    const onUserUpdated = () => {
+      const stored = localStorage.getItem('user');
+      setLoggedUser(stored ? JSON.parse(stored) : null);
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('user-updated', onUserUpdated as EventListener);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('user-updated', onUserUpdated as EventListener);
+    };
   }, []);
 
   const navLinks = [
@@ -38,23 +39,7 @@ const Header = () => {
     { name: 'Contacto', path: '/#contacto' },
   ];
 
-  const socialLinks = [
-    { 
-      name: 'Instagram', 
-      url: 'https://www.instagram.com/avancemosporchile_cl',
-      icon: <Instagram size={20} />
-    },
-    { 
-      name: 'TikTok', 
-      url: 'https://www.tiktok.com/@avancemosporchile',
-      icon: <TikTokIcon size={20} />
-    },
-    { 
-      name: 'Threads', 
-      url: 'https://www.threads.net/@avancemosporchile_cl',
-      icon: <AtSign size={20} />
-    }
-  ];
+  
 
   const isHomePage = location.pathname === '/';
 
@@ -75,22 +60,6 @@ const Header = () => {
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex space-x-6 items-center">
-          <div className="flex items-center space-x-4 mr-4">
-            {socialLinks.map((social) => (
-              <a
-                key={social.name}
-                href={social.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`transition-colors hover:text-brand-red ${
-                  scrolled || !isHomePage ? 'text-brand-blue' : 'text-white'
-                }`}
-                title={social.name}
-              >
-                {social.icon}
-              </a>
-            ))}
-          </div>
           {navLinks.map((link) => (
             <Link
               key={link.name}
@@ -103,14 +72,14 @@ const Header = () => {
             </Link>
           ))}
           <Link 
-            to="/login" 
+            to={loggedUser ? '/profile' : '/login'} 
             className={`px-6 py-2 rounded-full font-bold transition-all ${
               scrolled || !isHomePage 
                 ? 'bg-brand-blue text-white hover:bg-brand-red' 
                 : 'bg-white text-brand-blue hover:bg-brand-red hover:text-white'
             }`}
           >
-            Ingresar
+            {loggedUser ? 'Perfil' : 'Ingresar'}
           </Link>
         </nav>
 
@@ -148,25 +117,13 @@ const Header = () => {
                 </Link>
               ))}
               <Link 
-                to="/login" 
+                to={loggedUser ? '/profile' : '/login'} 
                 className="bg-brand-blue text-white px-4 py-2 rounded-full font-bold text-center"
                 onClick={() => setIsOpen(false)}
               >
-                Ingresar
+                {loggedUser ? 'Perfil' : 'Ingresar'}
               </Link>
-              <div className="flex justify-center space-x-6 pt-4 border-t border-gray-100">
-                {socialLinks.map((social) => (
-                  <a
-                    key={social.name}
-                    href={social.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-brand-blue hover:text-brand-red transition-colors"
-                  >
-                    {social.icon}
-                  </a>
-                ))}
-              </div>
+              
             </div>
           </motion.div>
         )}

@@ -52,6 +52,7 @@ const Editor = () => {
       const response = await fetchApi(`/api/posts/${id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      console.log('Fetch post response:', response);
       if (response.ok) {
         const data = await response.json();
         setTitle(data.title);

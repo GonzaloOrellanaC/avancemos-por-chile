@@ -26,8 +26,6 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
 
-  console.log(path.join(process.cwd(), 'public'))
-
   // Serve public folder as static (for public assets)
   app.use('/public', express.static(path.join(process.cwd(), 'public')));
 
@@ -45,21 +43,16 @@ async function startServer() {
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Avancemos Por Chile API is running' });
   });
-
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+  
+  const distPath = path.join(process.cwd(), 'dist');
+  app.use(express.static(distPath));
+  app.get('*', (req, res) => {
+    try {
       res.sendFile(path.join(distPath, 'index.html'));
-    });
-  }
+    } catch (error) {
+      res.status(500).send('Error al cargar la aplicación');
+    }
+  });
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);

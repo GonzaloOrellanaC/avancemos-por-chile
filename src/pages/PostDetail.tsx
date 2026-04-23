@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { Calendar, User, ArrowLeft, FileText, Download, Loader2 } from 'lucide-react';
 
 interface ContentBlock {
@@ -27,10 +27,13 @@ const PostDetail = () => {
     const fetchPost = async () => {
       try {
         const { default: fetchApi } = await import('../lib/api');
-        const response = await fetchApi(`/api/posts`);
-        const data = await response.json();
-        const found = data.find((p: any) => p.slug === slug);
-        setPost(found);
+        const response = await fetchApi(`/api/posts/slug/${slug}`);
+        if (response.ok) {
+          const data = await response.json();
+          setPost(data);
+        } else {
+          setPost(null);
+        }
       } catch (error) {
         console.error('Error fetching post:', error);
       } finally {
@@ -88,7 +91,11 @@ const PostDetail = () => {
               </div>
               <div className="flex items-center space-x-2">
                 <User size={18} className="text-brand-red" />
-                <span>{post.author.name}</span>
+                {post.author && (post.author._id ? (
+                  <Link to={`/u/${post.author._id}`} className="hover:underline">{post.author.name}</Link>
+                ) : (
+                  <span>{post.author.name}</span>
+                ))}
               </div>
             </div>
 

@@ -164,21 +164,60 @@ const Profile = () => {
               </div>
 
               <nav className="space-y-2">
-                <button 
-                  onClick={handleLogout}
-                  className="w-full flex items-center space-x-3 p-3 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all"
-                >
-                  <LogOut size={20} />
-                  <span className="font-medium">Cerrar Sesión</span>
-                </button>
+                <div className="space-y-2">
+                  <Link to="/profile/edit" className="w-full flex items-center space-x-3 p-3 text-gray-600 hover:bg-gray-50 hover:text-brand-blue rounded-xl transition-all">
+                    <Edit size={20} />
+                    <span className="font-medium">Editar perfil</span>
+                  </Link>
+                  <button 
+                    onClick={handleLogout}
+                    className="w-full flex items-center space-x-3 p-3 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all"
+                  >
+                    <LogOut size={20} />
+                    <span className="font-medium">Cerrar Sesión</span>
+                  </button>
+                </div>
               </nav>
             </div>
           </div>
 
           {/* Main Content */}
           <div className="lg:col-span-3 space-y-8">
+            {/* Quick admin buttons */}
+            <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
+              <div className="flex justify-center">
+                <div className="flex gap-6 items-center">
+                  {user?.role === 'admin' && (
+                    <>
+                      <Link to="/admin/pages" className="flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
+                        <div className="w-20 h-20 rounded-full bg-brand-blue/10 flex items-center justify-center mb-3">
+                          <Layout className="text-brand-blue" size={36} />
+                        </div>
+                        <div className="text-sm font-semibold">Páginas</div>
+                      </Link>
+
+                      <Link to="/admin/users" className="flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
+                        <div className="w-20 h-20 rounded-full bg-brand-blue/10 flex items-center justify-center mb-3">
+                          <User className="text-brand-blue" size={36} />
+                        </div>
+                        <div className="text-sm font-semibold">Usuarios</div>
+                      </Link>
+                    </>
+                  )}
+
+                  {user?.role === 'editor' && (
+                    <Link to="/admin/blog" className="flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
+                      <div className="w-20 h-20 rounded-full bg-brand-blue/10 flex items-center justify-center mb-3">
+                        <FileText className="text-brand-blue" size={36} />
+                      </div>
+                      <div className="text-sm font-semibold">Blog</div>
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
             {/* User creation (admin only) */}
-            {user?.role === 'admin' && (
+            {/* {user?.role === 'admin' && (
               <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
                 <h2 className="text-xl font-bold text-brand-blue mb-4">Crear nuevo usuario</h2>
                 <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
@@ -194,9 +233,9 @@ const Profile = () => {
                   </div>
                 </form>
               </div>
-            )}
+            )} */}
             {/* Pages Management */}
-            <div className="bg-white p-8 rounded-2xl shadow-md border border-gray-100">
+            {/* <div className="bg-white p-8 rounded-2xl shadow-md border border-gray-100">
               <div className="flex justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold text-brand-blue flex items-center space-x-3">
                   <Layout className="text-brand-red" size={32} />
@@ -246,10 +285,10 @@ const Profile = () => {
                   <p className="text-gray-400 mb-4">No hay páginas dinámicas creadas.</p>
                 </div>
               )}
-            </div>
+            </div> */}
 
             {/* Posts Management */}
-            <div className="bg-white p-8 rounded-2xl shadow-md border border-gray-100">
+            {/* <div className="bg-white p-8 rounded-2xl shadow-md border border-gray-100">
               <div className="flex justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold text-brand-blue flex items-center space-x-3">
                   <FileText className="text-brand-red" size={32} />
@@ -303,7 +342,7 @@ const Profile = () => {
                   <p className="text-gray-400 mb-4">No hay entradas en el blog.</p>
                 </div>
               )}
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

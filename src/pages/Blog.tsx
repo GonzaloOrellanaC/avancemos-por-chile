@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { Calendar, User, ArrowRight, Loader2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import PostCard from '../components/PostCard';
+import { Loader2 } from 'lucide-react';
 
 interface Post {
   _id: string;
@@ -9,20 +9,31 @@ interface Post {
   slug: string;
   bannerImage: string;
   createdAt: string;
-  author: { name: string };
+  author: { _id?: string; name: string };
 }
 
 const Blog = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const LIMIT = 10;
 
   useEffect(() => {
     const fetchPosts = async () => {
       try {
         const { default: fetchApi } = await import('../lib/api');
-        const response = await fetchApi('/api/posts');
+        const response = await fetchApi(`/api/posts?page=${page}&limit=${LIMIT}`);
         const data = await response.json();
-        setPosts(data);
+        console.log('Fetched posts data:', data);
+        // support both shapes: array or { posts, total, page, totalPages, limit }
+        const postsArray = Array.isArray(data) ? data : (data.posts || []);
+        setPosts(postsArray);
+        if (Array.isArray(data)) {
+          setTotalPages(1);
+        } else {
+          setTotalPages(data.totalPages || 1);
+        }
       } catch (error) {
         console.error('Error fetching posts:', error);
       } finally {
@@ -30,7 +41,7 @@ const Blog = () => {
       }
     };
     fetchPosts();
-  }, []);
+  }, [page]);
 
   return (
     <div className="min-h-screen pt-24 pb-12 bg-gray-50">
@@ -55,54 +66,35 @@ const Blog = () => {
         ) : posts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {posts.map((post, index) => (
-              <motion.article
-                key={post._id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all group"
-              >
-                <div className="relative h-56 overflow-hidden">
-                  <img 
-                    src={post.bannerImage || 'https://picsum.photos/seed/post/800/600'} 
-                    alt={post.title}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                </div>
-                
-                <div className="p-6">
-                  <div className="flex items-center space-x-4 text-xs text-gray-500 mb-4">
-                    <div className="flex items-center space-x-1">
-                      <Calendar size={14} />
-                      <span>{new Date(post.createdAt).toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <User size={14} />
-                      <span>{post.author.name}</span>
-                    </div>
-                  </div>
-                  
-                  <h2 className="text-2xl font-bold text-brand-blue mb-4 line-clamp-2 group-hover:text-brand-red transition-colors">
-                    {post.title}
-                  </h2>
-                  
-                  <Link 
-                    to={`/blog/${post.slug}`}
-                    className="inline-flex items-center space-x-2 text-brand-blue font-bold hover:text-brand-red transition-colors"
-                  >
-                    <span>Leer más</span>
-                    <ArrowRight size={18} />
-                  </Link>
-                </div>
-              </motion.article>
+              <PostCard key={post._id} post={post} index={index} />
             ))}
           </div>
-        ) : (
+          ) : null}
+
+        {/* Pagination controls */}
+        {!isLoading && (posts.length > 0) ? 
+          <div className="mt-8 flex items-center justify-center space-x-4">
+            <button
+              className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200 disabled:opacity-50"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page <= 1}
+            >
+              Anterior
+            </button>
+            <div className="text-sm text-gray-600">Página {page} de {totalPages}</div>
+            <button
+              className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200 disabled:opacity-50"
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+            >
+              Siguiente
+            </button>
+          </div>
+         : 
           <div className="text-center py-24">
             <p className="text-gray-500 text-xl">No hay publicaciones disponibles en este momento.</p>
           </div>
-        )}
+        }
       </div>
     </div>
   );

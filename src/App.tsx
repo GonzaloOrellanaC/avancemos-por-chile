@@ -15,6 +15,11 @@ import Privacy from './pages/Privacy';
 import Legal from './pages/Legal';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import AdminPages from './pages/AdminPages';
+import AdminUsers from './pages/AdminUsers';
+import AdminBlog from './pages/AdminBlog';
+import UserEdit from './pages/UserEdit';
+import PublicUser from './pages/PublicUser';
 
 export default function App() {
   return (
@@ -24,6 +29,9 @@ export default function App() {
         <main className="flex-grow">
           <Routes>
             <Route path="/" element={<DynamicPage />} />
+            <Route path="/admin/pages" element={<AdminPages />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/blog" element={<AdminBlog />} />
             <Route path="/p/:slug" element={<DynamicPage />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:slug" element={<PostDetail />} />
@@ -33,6 +41,8 @@ export default function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/editor" element={<Editor />} />
             <Route path="/editor/:id" element={<Editor />} />
+            <Route path="/profile/edit" element={<UserEdit />} />
+            <Route path="/u/:id" element={<PublicUser />} />
             <Route path="/page-editor/:slug" element={<PageEditor />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/legal" element={<Legal />} />
