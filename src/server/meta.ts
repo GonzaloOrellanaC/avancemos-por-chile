@@ -76,11 +76,12 @@ function toAbsoluteAssetUrl(assetUrl?: string | null) {
   }
 }
 
-function getPostDescription(content: ContentBlock[] = []) {
+function getPostDescription(content: ContentBlock[] = [], authorName?: string) {
   const firstParagraph = content.find((block) => block.type === 'paragraph' && normalizeText(block.value));
   const firstCaption = content.find((block) => normalizeText(block.caption));
   const descriptionSource = normalizeText(firstParagraph?.value) || normalizeText(firstCaption?.caption) || DEFAULT_DESCRIPTION;
-  return truncateText(descriptionSource, 200);
+  const authorPrefix = normalizeText(authorName) ? `Escrito por: ${normalizeText(authorName)}. ` : '';
+  return truncateText(`${authorPrefix}${descriptionSource}`, 200);
 }
 
 function buildMetaBlock(meta: MetaPayload) {
@@ -141,7 +142,7 @@ async function getMetaForRequest(requestPath: string): Promise<MetaPayload> {
 
   return {
     title: `${post.title} | Avancemos Por Chile`,
-    description: getPostDescription(post.content as ContentBlock[]),
+    description: getPostDescription(post.content as ContentBlock[], (post.author as { name?: string } | undefined)?.name),
     canonicalUrl: toCanonicalUrl(`/blog/${post.slug}`),
     imageUrl: toAbsoluteAssetUrl(post.bannerImage),
     imageAlt: post.title,
