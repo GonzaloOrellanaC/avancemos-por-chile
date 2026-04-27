@@ -52,12 +52,20 @@ function toCanonicalUrl(requestPath: string) {
 }
 
 function toAbsoluteAssetUrl(assetUrl?: string | null) {
-  if (!assetUrl) {
+  const normalizedAssetUrl = normalizeText(assetUrl || '').replace(/\\/g, '/');
+  if (!normalizedAssetUrl) {
     return DEFAULT_IMAGE;
   }
 
   try {
-    const url = new URL(assetUrl, SITE_ORIGIN);
+    const isAbsoluteUrl = /^https?:\/\//i.test(normalizedAssetUrl);
+    const assetPath = isAbsoluteUrl
+      ? normalizedAssetUrl
+      : normalizedAssetUrl.startsWith('/')
+        ? normalizedAssetUrl
+        : `/${normalizedAssetUrl}`;
+
+    const url = new URL(assetPath, SITE_ORIGIN);
     if (url.hostname === 'avancemosporchile.cl') {
       url.hostname = 'www.avancemosporchile.cl';
       url.protocol = 'https:';
