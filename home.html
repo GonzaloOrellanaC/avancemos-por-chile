@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Avancemos Por Chile | Mantención</title>
+    <meta
+      name="description"
+      content="Sitio temporalmente en mantención. Fecha máxima estimada de retorno: martes 28 de abril."
+    />
+    <link rel="icon" href="./isotipo-avancemosporchile.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --brand-blue: #073557;
+        --brand-red: #bb2830;
+        --brand-white: #ffffff;
+        --brand-cream: #f5f1ea;
+        --brand-shadow: 0 24px 60px rgba(7, 53, 87, 0.16);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        font-family: "Inter", sans-serif;
+        color: var(--brand-blue);
+        background: var(--brand-white);
+      }
+
+      body {
+        min-height: 100vh;
+        overflow: hidden;
+      }
+
+      .background {
+        position: fixed;
+        inset: 0;
+        background:
+          linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(245, 241, 234, 0.88)),
+          url("./public/100.JPG") center/cover no-repeat;
+        transform: scale(1.06);
+      }
+
+      .background::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at top left, rgba(187, 40, 48, 0.14), transparent 34%),
+          radial-gradient(circle at bottom right, rgba(7, 53, 87, 0.16), transparent 30%);
+        backdrop-filter: blur(2px);
+      }
+
+      .page {
+        position: relative;
+        max-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 32px;
+        overflow-y: auto;
+      }
+
+      .card {
+        width: min(760px, 100%);
+        padding: 40px 36px;
+        border-radius: 32px;
+        background: rgba(255, 255, 255, 0.84);
+        border: 1px solid rgba(7, 53, 87, 0.1);
+        box-shadow: var(--brand-shadow);
+        text-align: center;
+        backdrop-filter: blur(14px);
+      }
+
+      .logo {
+        width: min(320px, 72vw);
+        height: auto;
+        margin-bottom: 28px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 10px 16px;
+        border-radius: 999px;
+        background: rgba(187, 40, 48, 0.08);
+        color: var(--brand-red);
+        font-size: 0.82rem;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 22px 0 16px;
+        font-size: clamp(2.5rem, 5vw, 4.6rem);
+        line-height: 0.94;
+        letter-spacing: -0.06em;
+      }
+
+      h1 span {
+        color: var(--brand-red);
+      }
+
+      p {
+        margin: 0 auto;
+        max-width: 42rem;
+        font-size: clamp(1rem, 2vw, 1.18rem);
+        line-height: 1.75;
+        color: rgba(7, 53, 87, 0.82);
+      }
+
+      .deadline {
+        margin: 30px auto 0;
+        padding: 18px 22px;
+        max-width: 420px;
+        border-radius: 20px;
+        background: var(--brand-blue);
+        color: var(--brand-white);
+      }
+
+      .deadline strong {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 0.9rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .deadline span {
+        font-size: clamp(1.1rem, 2.2vw, 1.45rem);
+        font-weight: 800;
+      }
+
+      .footer-note {
+        margin-top: 22px;
+        font-size: 0.92rem;
+        color: rgba(7, 53, 87, 0.68);
+      }
+
+      @media (max-width: 640px) {
+        body {
+          overflow: auto;
+        }
+
+        .page {
+          padding: 18px;
+        }
+
+        .card {
+          padding: 28px 20px;
+          border-radius: 24px;
+        }
+
+        .eyebrow {
+          letter-spacing: 0.1em;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="background" aria-hidden="true"></div>
+    <main class="page">
+      <section class="card" aria-labelledby="maintenance-title">
+        <img
+          class="logo"
+          src="./logo-avancemosporchile.png"
+          alt="Avancemos Por Chile"
+        />
+        <div class="eyebrow">Mantención programada</div>
+        <h1 id="maintenance-title">Estamos realizando <span>mejoras</span> en el sitio</h1>
+        <p>
+          La página se encuentra temporalmente en mantención para actualizar contenidos y
+          optimizar la experiencia de navegación. Agradecemos tu paciencia mientras terminamos
+          este proceso.
+        </p>
+        <div class="deadline" aria-label="Fecha máxima estimada de retorno">
+          <strong>Plazo máximo</strong>
+          <span>Martes 28 de abril</span>
+        </div>
+        <p class="footer-note">Volveremos a estar disponibles a la brevedad.</p>
+      </section>
+    </main>
+  </body>
+</html>

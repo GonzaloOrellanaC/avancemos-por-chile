@@ -28,8 +28,11 @@ const ResetPassword = () => {
   });
 
   const onSubmit = async (data: Form) => {
-    if (!token) return toast.error('Token inválido');
-    
+    if (!token) {
+      toast.error('Token inválido');
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await fetch('/api/auth/reset-password', {
@@ -41,33 +44,16 @@ const ResetPassword = () => {
       if (response.ok) {
         toast.success('Contraseña actualizada');
         navigate('/login');
-      try {
-        const { default: fetchApi } = await import('../lib/api');
-        const response = await fetchApi('/api/auth/reset-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, password }),
-        });
-
-        if (response.ok) {
-          toast.success('Contraseña actualizada');
-          navigate('/login');
-        } else {
-          const err = await response.json();
-          toast.error(err.message || 'Error al resetear contraseña');
-        }
-      } catch (error) {
-        toast.error('Error de conexión');
-      } finally {
-        setIsLoading(false);
+      } else {
+        const err = await response.json();
+        toast.error(err.message || 'Error al resetear contraseña');
       }
-    }
-    }catch (error) {
+    } catch (error) {
       toast.error('Error de conexión');
     } finally {
       setIsLoading(false);
     }
-  }
+  };
 
 
   return (

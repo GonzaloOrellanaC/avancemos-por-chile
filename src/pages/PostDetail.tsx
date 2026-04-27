@@ -15,7 +15,7 @@ interface Post {
   bannerImage: string;
   content: ContentBlock[];
   createdAt: string;
-  author: { name: string };
+  author: { _id?: string; name: string };
 }
 
 const PostDetail = () => {
