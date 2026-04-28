@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Calendar, User, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import SharePostButton from './SharePostButton';
 
 interface PostProp {
   _id: string;
@@ -18,12 +19,16 @@ interface Props {
 }
 
 export default function PostCard({ post, index = 0 }: Props) {
+  const shareUrl = typeof window !== 'undefined'
+    ? new URL(`/blog/${post.slug}`, window.location.origin).toString()
+    : `/blog/${post.slug}`;
+
   return (
     <motion.article
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
-      className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all group"
+      className="group rounded-2xl bg-white shadow-lg transition-all hover:shadow-2xl"
     >
       <div className="relative h-56 overflow-hidden">
         <img
@@ -54,13 +59,17 @@ export default function PostCard({ post, index = 0 }: Props) {
           {post.title}
         </h2>
 
-        <Link
-          to={`/blog/${post.slug}`}
-          className="inline-flex items-center space-x-2 text-brand-blue font-bold hover:text-brand-red transition-colors"
-        >
-          <span>Leer más</span>
-          <ArrowRight size={18} />
-        </Link>
+        <div className="flex items-center justify-between gap-3">
+          <Link
+            to={`/blog/${post.slug}`}
+            className="inline-flex items-center space-x-2 text-brand-blue font-bold hover:text-brand-red transition-colors"
+          >
+            <span>Leer más</span>
+            <ArrowRight size={18} />
+          </Link>
+
+          <SharePostButton title={post.title} url={shareUrl} />
+        </div>
       </div>
     </motion.article>
   );

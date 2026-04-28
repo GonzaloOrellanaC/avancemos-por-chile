@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Calendar, User, ArrowLeft, FileText, Download, Loader2 } from 'lucide-react';
+import SharePostButton from '../components/SharePostButton';
 
 interface ContentBlock {
   type: 'paragraph' | 'image' | 'pdf';
@@ -22,6 +23,7 @@ const PostDetail = () => {
   const { slug } = useParams();
   const [post, setPost] = useState<Post | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : `/blog/${slug}`;
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -80,9 +82,12 @@ const PostDetail = () => {
               <span className="font-bold uppercase text-xs tracking-widest">Volver al blog</span>
             </Link>
 
-            <h1 className="text-4xl md:text-6xl font-black text-brand-blue mb-6 leading-tight">
-              {post.title}
-            </h1>
+            <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <h1 className="text-4xl md:text-6xl font-black text-brand-blue leading-tight">
+                {post.title}
+              </h1>
+              <SharePostButton title={post.title} url={shareUrl} variant="full" className="md:flex-shrink-0" />
+            </div>
 
             <div className="flex items-center space-x-6 text-sm text-gray-500 mb-12 pb-8 border-b border-gray-100">
               <div className="flex items-center space-x-2">

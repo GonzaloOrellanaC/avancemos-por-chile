@@ -135,16 +135,53 @@ async function getMetaForRequest(requestPath: string): Promise<MetaPayload> {
   }
 
   const slug = decodeURIComponent(blogMatch[1]);
+  console.info('[meta] Resolving blog metadata', {
+    requestPath,
+    slug,
+  });
+
   const post = await Post.findOne({ slug, status: 'published' }).populate('author', 'name');
   if (!post) {
+    console.warn('[meta] Published post not found for metadata', {
+      requestPath,
+      slug,
+    });
     return defaultMeta;
+  }
+
+  const resolvedImageUrl = toAbsoluteAssetUrl(post.bannerImage);
+  const normalizedBannerImage = normalizeText(post.bannerImage);
+  const isUsingDefaultImage = resolvedImageUrl === DEFAULT_IMAGE;
+
+  console.info('[meta] Blog metadata resolved', {
+    slug,
+    postId: String(post._id),
+    title: post.title,
+    rawBannerImage: normalizedBannerImage || null,
+    resolvedImageUrl,
+    isUsingDefaultImage,
+  });
+
+  if (!normalizedBannerImage) {
+    console.warn('[meta] Post has no bannerImage for metadata', {
+      slug,
+      postId: String(post._id),
+      title: post.title,
+    });
+  } else if (isUsingDefaultImage) {
+    console.warn('[meta] bannerImage fell back to default image', {
+      slug,
+      postId: String(post._id),
+      title: post.title,
+      rawBannerImage: normalizedBannerImage,
+    });
   }
 
   return {
     title: `${post.title} | Avancemos Por Chile`,
     description: getPostDescription(post.content as ContentBlock[], (post.author as { name?: string } | undefined)?.name),
     canonicalUrl: toCanonicalUrl(`/blog/${post.slug}`),
-    imageUrl: toAbsoluteAssetUrl(post.bannerImage),
+    imageUrl: resolvedImageUrl,
     imageAlt: post.title,
     ogType: 'article',
     publishedTime: post.createdAt?.toISOString?.() || undefined,
