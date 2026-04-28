@@ -3,8 +3,22 @@ import { Post } from '../models/Post.ts';
 import type { AuthRequest } from '../middleware/auth.ts';
 import slugify from 'slugify';
 import jwt from 'jsonwebtoken';
+import { generateShareImagesForBanner } from '../lib/shareImages.ts';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_here';
+
+async function safeGenerateShareImages(slug: string, bannerImage?: string | null) {
+  try {
+    return await generateShareImagesForBanner(slug, bannerImage);
+  } catch (error) {
+    console.warn('[posts] Could not generate share images', {
+      slug,
+      bannerImage,
+      error,
+    });
+    return {};
+  }
+}
 
 export const getPosts = async (req: AuthRequest, res: Response) => {
   try {
@@ -99,12 +113,14 @@ export const createPost = async (req: AuthRequest, res: Response) => {
   try {
     const { title, content, bannerImage, status } = req.body;
     const slug = slugify(title, { lower: true, strict: true }) + '-' + Date.now();
+    const shareImages = await safeGenerateShareImages(slug, bannerImage);
     
     const post = new Post({
       title,
       slug,
       content,
       bannerImage,
+      ...shareImages,
       status,
       author: req.user.id
     });
@@ -124,9 +140,29 @@ export const updatePost = async (req: AuthRequest, res: Response) => {
     const post = await Post.findOne({ _id: id, author: req.user.id });
     if (!post) return res.status(404).json({ message: 'Publicación no encontrada' });
 
-    post.title = title || post.title;
+    const nextTitle = title || post.title;
+    const nextSlug = title && title !== post.title
+      ? slugify(nextTitle, { lower: true, strict: true }) + '-' + Date.now()
+      : post.slug;
+    const nextBannerImage = bannerImage || post.bannerImage;
+    const shouldRegenerateShareImages = nextBannerImage && (
+      nextBannerImage !== post.bannerImage ||
+      !post.bannerImageToShare ||
+      !post.bannerImageToShareX
+    );
+    const shareImages = shouldRegenerateShareImages
+      ? await safeGenerateShareImages(nextSlug, nextBannerImage)
+      : {
+          bannerImageToShare: post.bannerImageToShare,
+          bannerImageToShareX: post.bannerImageToShareX,
+        };
+
+    post.title = nextTitle;
+    post.slug = nextSlug;
     post.content = content || post.content;
-    post.bannerImage = bannerImage || post.bannerImage;
+    post.bannerImage = nextBannerImage;
+    post.bannerImageToShare = shareImages.bannerImageToShare || post.bannerImageToShare;
+    post.bannerImageToShareX = shareImages.bannerImageToShareX || post.bannerImageToShareX;
     post.status = status || post.status;
 
     await post.save();

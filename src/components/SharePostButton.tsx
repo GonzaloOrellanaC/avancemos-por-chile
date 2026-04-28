@@ -8,7 +8,7 @@ interface SharePostButtonProps {
   className?: string;
 }
 
-const buildShareLinks = (title: string, url: string) => {
+export const buildShareLinks = (title: string, url: string) => {
   const encodedTitle = encodeURIComponent(title);
   const encodedUrl = encodeURIComponent(url);
 
@@ -64,6 +64,33 @@ export default function SharePostButton({
     ? 'inline-flex items-center gap-2 rounded-full bg-brand-blue px-5 py-3 text-sm font-bold text-white shadow-lg transition-colors hover:bg-brand-red'
     : 'inline-flex items-center gap-2 rounded-full border border-gray-200 px-4 py-2 text-sm font-bold text-brand-blue transition-colors hover:border-brand-blue hover:bg-brand-blue/5';
 
+  const inlineLinks = [
+    {
+      href: shareLinks.whatsapp,
+      label: 'WhatsApp',
+      icon: MessageCircle,
+      className: 'bg-green-50 text-green-700 hover:bg-green-100',
+    },
+    {
+      href: shareLinks.facebook,
+      label: 'Facebook',
+      icon: Facebook,
+      className: 'bg-blue-50 text-blue-700 hover:bg-blue-100',
+    },
+    {
+      href: shareLinks.x,
+      label: 'X',
+      icon: X,
+      className: 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+    },
+    {
+      href: shareLinks.linkedin,
+      label: 'LinkedIn',
+      icon: Linkedin,
+      className: 'bg-sky-50 text-sky-700 hover:bg-sky-100',
+    },
+  ];
+
   return (
     <div ref={containerRef} className={`relative ${className}`.trim()}>
       <button
@@ -76,6 +103,31 @@ export default function SharePostButton({
         <Share2 size={variant === 'full' ? 18 : 16} />
         <span>Compartir</span>
       </button>
+
+      {variant === 'full' && (
+        <div className="mt-4">
+          <p className="mb-3 text-xs font-black uppercase tracking-widest text-gray-400">
+            Compartir en redes
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {inlineLinks.map((link) => {
+              const Icon = link.icon;
+              return (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${link.className}`}
+                >
+                  <Icon size={16} />
+                  <span>{link.label}</span>
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {isOpen && (
         <div className="absolute right-0 top-full z-20 mt-3 w-72 rounded-2xl border border-gray-100 bg-white p-4 shadow-2xl">
