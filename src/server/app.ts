@@ -9,8 +9,32 @@ import pageRoutes from '../routes/pageRoutes.ts';
 import { errorHandler } from '../middleware/errorHandler.ts';
 import { renderAppHtml, SITE_ORIGIN } from './meta.ts';
 
+function normalizeRenderablePath(rawPath?: unknown) {
+  const candidate = Array.isArray(rawPath) ? rawPath[0] : rawPath;
+  if (typeof candidate !== 'string') {
+    return null;
+  }
+
+  const trimmedCandidate = candidate.trim();
+  if (!trimmedCandidate) {
+    return null;
+  }
+
+  try {
+    const url = new URL(trimmedCandidate, SITE_ORIGIN);
+    if (url.origin !== SITE_ORIGIN) {
+      return null;
+    }
+
+    return `${url.pathname}${url.search}`;
+  } catch {
+    return null;
+  }
+}
+
 export function createApp() {
   const app = express();
+  const uploadsPath = path.join(process.cwd(), 'uploads');
 
   app.use(helmet({
     contentSecurityPolicy: false,
@@ -28,8 +52,13 @@ export function createApp() {
   app.use(cors());
   app.use(express.json());
 
+  app.use('/uploads/social', express.static(path.join(uploadsPath, 'social'), {
+    setHeaders: (res) => {
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    },
+  }));
   app.use('/public', express.static(path.join(process.cwd(), 'public')));
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+  app.use('/uploads', express.static(uploadsPath));
 
   app.use('/api/auth', authRoutes);
   app.use('/api/posts', postRoutes);
@@ -42,6 +71,26 @@ export function createApp() {
   });
 
   const distPath = path.join(process.cwd(), 'dist');
+  app.get('/api/rendered-page', async (req, res) => {
+    const requestPath = normalizeRenderablePath(req.query.path);
+    if (!requestPath) {
+      return res.status(400).json({
+        message: 'Debes enviar un path interno valido, por ejemplo /blog/mi-publicacion',
+      });
+    }
+
+    try {
+      const html = await renderAppHtml(distPath, requestPath);
+      res.status(200).contentType('text/html').send(html);
+    } catch (error) {
+      console.error('[rendered-page] Error rendering path', {
+        requestPath,
+        error,
+      });
+      res.status(500).json({ message: 'No se pudo renderizar la pagina solicitada' });
+    }
+  });
+
   app.use(express.static(distPath));
   app.get('*', async (req, res) => {
     try {

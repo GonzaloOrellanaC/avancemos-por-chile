@@ -115,7 +115,7 @@ function buildSeoShareLinks(title: string, canonicalUrl: string) {
       label: 'Compartir en Facebook',
     },
     {
-      href: `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`,
+      href: `https://x.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`,
       label: 'Compartir en X',
     },
     {
@@ -216,6 +216,10 @@ function buildMetaBlock(meta: MetaPayload) {
     <meta property="og:description" content="${description}" />
     <meta property="og:url" content="${canonicalUrl}" />
     <meta property="og:image" content="${imageUrl}" />
+    <meta property="og:image:secure_url" content="${imageUrl}" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="${imageAlt}" />
 
     <!-- Twitter -->
@@ -223,6 +227,7 @@ function buildMetaBlock(meta: MetaPayload) {
     <meta name="twitter:title" content="${title}" />
     <meta name="twitter:description" content="${description}" />
     <meta name="twitter:image" content="${twitterImageUrl}" />
+    <meta name="twitter:image:alt" content="${imageAlt}" />
     <meta name="twitter:url" content="${canonicalUrl}" />
 ${meta.publishedTime ? `    <meta property="article:published_time" content="${escapeHtml(meta.publishedTime)}" />\n` : ''}${authorName ? `    <meta property="article:author" content="${authorName}" />\n` : ''}    <!--app-meta-end-->`;
 }
@@ -324,7 +329,9 @@ export async function renderAppHtml(distPath: string, requestPath: string) {
     getRenderPayloadForRequest(requestPath),
   ]);
 
-  return template
+  const sanitizedTemplate = template.replace(/\s*<!-- Twitter -->[\s\S]*?(?=\s*<!-- Structured data -->)/i, '\n');
+
+  return sanitizedTemplate
     .replace(/<!--app-meta-start-->[\s\S]*?<!--app-meta-end-->/, buildMetaBlock(payload.meta))
     .replace(/<div id="root"><\/div>/, payload.appHtml);
 }

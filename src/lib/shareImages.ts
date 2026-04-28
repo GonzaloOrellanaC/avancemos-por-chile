@@ -1,6 +1,11 @@
 import fs from 'fs/promises';
 import path from 'path';
-import sharp from 'sharp';
+import { spawnSync } from 'child_process';
+
+type SharpRuntimeModule = {
+  default: typeof import('sharp');
+};
+type JimpModule = typeof import('jimp');
 
 type ShareImageResult = {
   bannerImageToShare?: string;
@@ -11,6 +16,51 @@ type SourceImage = {
   buffer: Buffer;
   extension: string;
 };
+
+let sharpAvailabilityPromise: Promise<boolean> | null = null;
+let sharpModulePromise: Promise<SharpRuntimeModule> | null = null;
+let jimpModulePromise: Promise<JimpModule> | null = null;
+let hasLoggedJimpFallback = false;
+
+async function canUseSharp() {
+  if (!sharpAvailabilityPromise) {
+    sharpAvailabilityPromise = Promise.resolve().then(() => {
+      const probe = spawnSync(
+        process.execPath,
+        ['-e', "import('sharp').then(() => process.exit(0)).catch(() => process.exit(1))"],
+        {
+          cwd: process.cwd(),
+          stdio: 'ignore',
+        },
+      );
+
+      return probe.status === 0;
+    });
+  }
+
+  return sharpAvailabilityPromise;
+}
+
+async function loadSharp() {
+  const available = await canUseSharp();
+  if (!available) {
+    throw new Error('sharp no está disponible en este entorno');
+  }
+
+  if (!sharpModulePromise) {
+    sharpModulePromise = import('sharp') as Promise<SharpRuntimeModule>;
+  }
+
+  return sharpModulePromise;
+}
+
+async function loadJimp() {
+  if (!jimpModulePromise) {
+    jimpModulePromise = import('jimp');
+  }
+
+  return jimpModulePromise;
+}
 
 function normalizeAssetUrl(assetUrl?: string | null) {
   return (assetUrl || '').trim().replace(/\\/g, '/');
@@ -54,17 +104,34 @@ function buildOutputBaseName(slug: string, extension: string) {
 }
 
 async function createVariant(buffer: Buffer, outputPath: string, width: number, height: number) {
-  await sharp(buffer)
-    .rotate()
-    .resize({
-      width,
-      height,
-      fit: 'cover',
-      position: 'centre',
-      withoutEnlargement: true,
-    })
-    .jpeg({ quality: 76, mozjpeg: true })
-    .toFile(outputPath);
+  if (await canUseSharp()) {
+    const { default: sharp } = await loadSharp();
+
+    await sharp(buffer)
+      .rotate()
+      .resize({
+        width,
+        height,
+        fit: 'cover',
+        position: 'centre',
+        withoutEnlargement: true,
+      })
+      .jpeg({ quality: 76, mozjpeg: true })
+      .toFile(outputPath);
+
+    return;
+  }
+
+  if (!hasLoggedJimpFallback) {
+    console.warn('[share-images] sharp no está disponible; usando jimp como fallback');
+    hasLoggedJimpFallback = true;
+  }
+
+  const { Jimp, JimpMime } = await loadJimp();
+  const image = await Jimp.read(buffer);
+  image.cover({ w: width, h: height });
+  const output = await image.getBuffer(JimpMime.jpeg, { quality: 76 });
+  await fs.writeFile(outputPath, output);
 }
 
 export async function generateShareImagesForBanner(slug: string, bannerImage?: string | null): Promise<ShareImageResult> {

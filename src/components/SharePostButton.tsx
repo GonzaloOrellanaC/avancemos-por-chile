@@ -15,7 +15,7 @@ export const buildShareLinks = (title: string, url: string) => {
   return {
     whatsapp: `https://wa.me/?text=${encodedTitle}%20${encodedUrl}`,
     facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
-    x: `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`,
+    x: `https://x.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`,
     linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
   };
 };
