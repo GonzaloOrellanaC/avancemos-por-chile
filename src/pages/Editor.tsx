@@ -10,7 +10,9 @@ import {
   Trash2, 
   ArrowLeft,
   Loader2,
-  GripVertical
+  GripVertical,
+  MessageSquareQuote,
+  History,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -21,28 +23,97 @@ interface ContentBlock {
   caption?: string;
 }
 
+type UserRole = 'admin' | 'editor' | 'columnista';
+type PostStatus = 'draft' | 'in_review' | 'changes_requested' | 'published';
+
+interface PostHistoryItem {
+  _id: string;
+  action: 'created' | 'updated' | 'submitted_for_review' | 'changes_requested' | 'resubmitted_for_review' | 'published' | 'moved_to_draft';
+  status: PostStatus;
+  comment?: string;
+  createdAt: string;
+  actor?: {
+    _id?: string;
+    name?: string;
+    role?: UserRole;
+  };
+  actorRole?: UserRole;
+}
+
+interface LoadedPost {
+  _id: string;
+  title: string;
+  bannerImage?: string;
+  status: PostStatus;
+  content: Array<{ type: 'paragraph' | 'image' | 'pdf'; value: string; caption?: string }>;
+  history?: PostHistoryItem[];
+}
+
+const statusOptionsByRole: Record<UserRole, Array<{ value: PostStatus; label: string }>> = {
+  admin: [
+    { value: 'draft', label: 'Borrador' },
+    { value: 'in_review', label: 'En revisión' },
+    { value: 'changes_requested', label: 'Solicitar cambios' },
+    { value: 'published', label: 'Publicado' },
+  ],
+  editor: [
+    { value: 'draft', label: 'Borrador' },
+    { value: 'in_review', label: 'En revisión' },
+    { value: 'changes_requested', label: 'Solicitar cambios' },
+    { value: 'published', label: 'Publicado' },
+  ],
+  columnista: [
+    { value: 'draft', label: 'Borrador' },
+    { value: 'in_review', label: 'Enviar a revisión' },
+  ],
+};
+
 const Editor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole>('editor');
   
   const [title, setTitle] = useState('');
   const [bannerImage, setBannerImage] = useState('');
-  const [status, setStatus] = useState<'draft' | 'published'>('draft');
+  const [status, setStatus] = useState<PostStatus>('draft');
   const [blocks, setBlocks] = useState<ContentBlock[]>([]);
+  const [history, setHistory] = useState<PostHistoryItem[]>([]);
+  const [editorFeedback, setEditorFeedback] = useState('');
+  const [originalStatus, setOriginalStatus] = useState<PostStatus>('draft');
 
   useEffect(() => {
     const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
     if (!token) {
       navigate('/login');
       return;
+    }
+
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser) as { role?: UserRole };
+        if (parsedUser.role && parsedUser.role in statusOptionsByRole) {
+          setUserRole(parsedUser.role);
+        }
+      } catch (error) {
+        console.warn('Could not read current user role', error);
+      }
     }
 
     if (id) {
       fetchPost();
     }
   }, [id, navigate]);
+
+  useEffect(() => {
+    const allowedStatuses = statusOptionsByRole[userRole].map((option) => option.value);
+    const canKeepCurrentStatus = userRole === 'columnista' && status === 'changes_requested';
+    if (!allowedStatuses.includes(status) && !canKeepCurrentStatus) {
+      setStatus(allowedStatuses[0]);
+    }
+  }, [status, userRole]);
 
   const fetchPost = async () => {
     setIsLoading(true);
@@ -54,10 +125,12 @@ const Editor = () => {
       });
       console.log('Fetch post response:', response);
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json() as LoadedPost;
         setTitle(data.title);
         setBannerImage(data.bannerImage || '');
-        setStatus(data.status);
+        setStatus(data.status as PostStatus);
+        setOriginalStatus(data.status as PostStatus);
+        setHistory(data.history || []);
         // Add IDs to blocks for Reorder
         setBlocks(data.content.map((b: any, i: number) => ({ ...b, id: `block-${i}-${Date.now()}` })));
       }
@@ -125,6 +198,18 @@ const Editor = () => {
 
   const handleSave = async () => {
     if (!title) return toast.error('El título es obligatorio');
+
+    if (userRole === 'columnista' && status === 'published') {
+      return toast.error('Como columnista solo puedes guardar borradores o enviar a revisión');
+    }
+
+    if (userRole === 'columnista' && status === 'changes_requested') {
+      return toast.error('Debes corregir el post y luego guardarlo como borrador o reenviarlo a revisión');
+    }
+
+    if ((userRole === 'editor' || userRole === 'admin') && status === 'changes_requested' && !editorFeedback.trim()) {
+      return toast.error('Agrega comentarios para solicitar cambios');
+    }
     
     setIsSaving(true);
     try {
@@ -143,6 +228,7 @@ const Editor = () => {
           title,
           bannerImage,
           status,
+          editorFeedback: status === 'changes_requested' ? editorFeedback : undefined,
           content: blocks.map(({ type, value, caption }) => ({ type, value, caption }))
         })
       });
@@ -167,6 +253,28 @@ const Editor = () => {
     </div>
   );
 
+  const statusOptions = statusOptionsByRole[userRole];
+  const latestFeedback = [...history].reverse().find((entry) => entry.action === 'changes_requested' && entry.comment?.trim());
+  const saveLabel = userRole === 'columnista' && status === 'in_review'
+    ? originalStatus === 'changes_requested'
+      ? 'Reenviar a revisión'
+      : 'Enviar a revisión'
+    : status === 'changes_requested'
+      ? 'Solicitar cambios'
+      : status === 'published'
+        ? 'Publicar'
+        : 'Guardar';
+
+  const actionLabels: Record<PostHistoryItem['action'], string> = {
+    created: 'Creó la publicación',
+    updated: 'Actualizó el contenido',
+    submitted_for_review: 'Envió a revisión',
+    changes_requested: 'Solicitó cambios',
+    resubmitted_for_review: 'Reenvió a revisión',
+    published: 'Publicó la entrada',
+    moved_to_draft: 'Volvió a borrador',
+  };
+
   return (
     <div className="min-h-screen pt-24 pb-12 bg-gray-50">
       <div className="container mx-auto px-4 max-w-4xl">
@@ -190,8 +298,9 @@ const Editor = () => {
               onChange={(e) => setStatus(e.target.value as any)}
               className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold text-brand-blue outline-none"
             >
-              <option value="draft">Borrador</option>
-              <option value="published">Publicado</option>
+              {statusOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
             </select>
             <button 
               onClick={handleSave}
@@ -199,10 +308,26 @@ const Editor = () => {
               className="bg-brand-blue text-white px-6 py-2 rounded-full font-bold flex items-center space-x-2 hover:bg-brand-red transition-all disabled:opacity-70"
             >
               {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-              <span>Guardar</span>
+              <span>{saveLabel}</span>
             </button>
           </div>
         </div>
+
+        {userRole === 'columnista' && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-2xl text-sm">
+            Los posts de columnistas pueden quedar como borrador o enviarse a revisión. La publicación final la realiza un editor.
+          </div>
+        )}
+
+        {latestFeedback && userRole === 'columnista' && (
+          <div className="bg-red-50 border border-red-200 text-red-900 px-5 py-4 rounded-2xl text-sm space-y-2">
+            <div className="font-black uppercase tracking-wider text-xs">Feedback del editor</div>
+            <p className="leading-relaxed whitespace-pre-wrap">{latestFeedback.comment}</p>
+            <div className="text-xs text-red-700 font-semibold">
+              {latestFeedback.actor?.name || 'Editor'} · {new Date(latestFeedback.createdAt).toLocaleString()}
+            </div>
+          </div>
+        )}
 
         {/* Editor Area */}
         <div className="space-y-8">
@@ -237,6 +362,24 @@ const Editor = () => {
               )}
             </div>
           </div>
+
+          {(userRole === 'editor' || userRole === 'admin') && (
+            <div className="bg-white p-8 rounded-2xl shadow-md border border-gray-100 space-y-4">
+              <div className="flex items-center gap-3 text-brand-blue">
+                <MessageSquareQuote size={22} />
+                <h2 className="text-xl font-bold">Feedback editorial</h2>
+              </div>
+              <p className="text-sm text-gray-500">
+                Usa este espacio cuando necesites rechazar la publicación y devolverla al columnista con observaciones concretas.
+              </p>
+              <textarea
+                value={editorFeedback}
+                onChange={(e) => setEditorFeedback(e.target.value)}
+                placeholder="Escribe aquí el feedback para el columnista..."
+                className="w-full min-h-[140px] rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-blue resize-none"
+              />
+            </div>
+          )}
 
           {/* Content Blocks */}
           <Reorder.Group axis="y" values={blocks} onReorder={setBlocks} className="space-y-4">
@@ -362,6 +505,38 @@ const Editor = () => {
               <FileText size={18} />
               <span className="font-bold text-sm">PDF</span>
             </button>
+          </div>
+
+          <div className="bg-white p-8 rounded-2xl shadow-md border border-gray-100">
+            <div className="flex items-center gap-3 mb-6 text-brand-blue">
+              <History size={22} />
+              <h2 className="text-xl font-bold">Historial de la publicación</h2>
+            </div>
+
+            {history.length === 0 ? (
+              <p className="text-gray-400">Aún no hay movimientos registrados.</p>
+            ) : (
+              <div className="space-y-4">
+                {[...history].reverse().map((entry) => (
+                  <div key={entry._id} className="rounded-2xl border border-gray-100 bg-gray-50 px-5 py-4">
+                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <div className="font-bold text-brand-blue">{actionLabels[entry.action]}</div>
+                        <div className="text-sm text-gray-500">
+                          {entry.actor?.name || 'Usuario'} · {entry.actor?.role || entry.actorRole || 'sin rol'}
+                        </div>
+                      </div>
+                      <div className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                        {new Date(entry.createdAt).toLocaleString()}
+                      </div>
+                    </div>
+                    {entry.comment && (
+                      <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-gray-700">{entry.comment}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

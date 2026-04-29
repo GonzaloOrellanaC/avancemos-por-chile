@@ -5,6 +5,9 @@ import {defineConfig, loadEnv} from 'vite';
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
+  const backendPort = env.PORT || '4002';
+  const backendTarget = `http://localhost:${backendPort}`;
+
   return {
     plugins: [react(), tailwindcss()],
     define: {
@@ -20,6 +23,16 @@ export default defineConfig(({mode}) => {
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       port: 3002,
       hmr: process.env.DISABLE_HMR !== 'true',
+      proxy: {
+        '/api': {
+          target: backendTarget,
+          changeOrigin: true,
+        },
+        '/uploads': {
+          target: backendTarget,
+          changeOrigin: true,
+        },
+      },
     },
   };
 });

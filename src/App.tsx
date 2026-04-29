@@ -20,6 +20,7 @@ import AdminUsers from './pages/AdminUsers';
 import AdminBlog from './pages/AdminBlog';
 import UserEdit from './pages/UserEdit';
 import PublicUser from './pages/PublicUser';
+import Notifications from './pages/Notifications';
 
 export default function App() {
   return (
@@ -39,6 +40,7 @@ export default function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/notifications" element={<Notifications />} />
             <Route path="/editor" element={<Editor />} />
             <Route path="/editor/:id" element={<Editor />} />
             <Route path="/profile/edit" element={<UserEdit />} />

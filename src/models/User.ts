@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ['admin', 'editor'], default: 'editor' },
+  role: { type: String, enum: ['admin', 'editor', 'columnista'], default: 'editor' },
   // Profile fields for public author pages
   profileImage: { type: String },
   shortDescription: { type: String },

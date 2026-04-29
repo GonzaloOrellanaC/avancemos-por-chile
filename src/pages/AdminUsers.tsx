@@ -17,7 +17,7 @@ export default function AdminUsers() {
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [newRole, setNewRole] = useState<'editor'|'admin'>('editor');
+  const [newRole, setNewRole] = useState<'editor' | 'admin' | 'columnista'>('editor');
   const [isCreating, setIsCreating] = useState(false);
 
   const fetchUsers = async () => {
@@ -47,7 +47,8 @@ export default function AdminUsers() {
       });
 
       if (response.ok) {
-        toast.success('Usuario creado');
+        const result = await response.json();
+        toast.success(result.message || 'Usuario creado y correo enviado');
         setNewName(''); setNewEmail(''); setNewPassword(''); setNewRole('editor');
         await fetchUsers();
       } else {
@@ -78,6 +79,7 @@ export default function AdminUsers() {
           <div className="flex items-center space-x-2">
             <select value={newRole} onChange={(e) => setNewRole(e.target.value as any)} className="p-3 bg-gray-50 rounded-lg">
               <option value="editor">Editor</option>
+              <option value="columnista">Columnista</option>
               <option value="admin">Admin</option>
             </select>
             <button disabled={isCreating} className="bg-brand-blue text-white px-4 py-2 rounded-lg font-bold">{isCreating ? 'Creando...' : 'Crear'}</button>

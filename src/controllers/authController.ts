@@ -4,8 +4,74 @@ import { User } from '../models/User.ts';
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 import type { AuthRequest } from '../middleware/auth.ts';
+import { renderHtmlTemplate } from '../lib/emailTemplates.ts';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_here';
+const ALLOWED_USER_ROLES = new Set(['admin', 'editor', 'columnista']);
+const FRONTEND_URL = (process.env.FRONTEND_URL || 'http://localhost:3002').replace(/\/$/, '');
+
+const createMailTransport = () => {
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPort = Number(process.env.SMTP_PORT || 465);
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+
+  if (!smtpHost || !smtpUser || !smtpPass) {
+    throw new Error('La configuración SMTP está incompleta');
+  }
+
+  return nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465,
+    auth: {
+      user: smtpUser,
+      pass: smtpPass,
+    },
+  });
+};
+
+const sendWelcomeEmail = async ({
+  name,
+  email,
+  password,
+  role,
+}: {
+  name: string;
+  email: string;
+  password: string;
+  role: string;
+}) => {
+  const transporter = createMailTransport();
+  const loginUrl = `${FRONTEND_URL}/login`;
+  const from = process.env.CONTACT_EMAIL || process.env.SMTP_USER;
+  const html = await renderHtmlTemplate('welcome-account', {
+    name,
+    email,
+    password,
+    role,
+    loginUrl,
+  });
+
+  await transporter.sendMail({
+    from: from ? `Avancemos por Chile <${from}>` : undefined,
+    to: email,
+    subject: 'Bienvenido a Avancemos por Chile',
+    text: [
+      `Hola, ${name}.`,
+      '',
+      'Tu cuenta en Avancemos por Chile ha sido creada por el super administrador.',
+      '',
+      `Correo: ${email}`,
+      `Contraseña: ${password}`,
+      `Rol: ${role}`,
+      `Acceso: ${loginUrl}`,
+      '',
+      'Te recomendamos cambiar tu contraseña después de iniciar sesión por primera vez.',
+    ].join('\n'),
+    html,
+  });
+};
 
 export const login = async (req: Request, res: Response) => {
   try {
@@ -46,13 +112,26 @@ export const createUser = async (req: AuthRequest, res: Response) => {
 
     const { name, email, password, role } = req.body;
     if (!name || !email || !password) return res.status(400).json({ message: 'Faltan datos requeridos' });
+    if (role && !ALLOWED_USER_ROLES.has(role)) {
+      return res.status(400).json({ message: 'Rol inválido' });
+    }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) return res.status(400).json({ message: 'El usuario ya existe' });
 
-    const user = new User({ name, email, password, role: role === 'admin' ? 'admin' : 'editor' });
+    const nextRole = role && ALLOWED_USER_ROLES.has(role) ? role : 'editor';
+    const user = new User({ name, email, password, role: nextRole });
     await user.save();
-    res.status(201).json({ message: 'Usuario creado exitosamente' });
+
+    try {
+      await sendWelcomeEmail({ name, email, password, role: nextRole });
+    } catch (mailError) {
+      await User.findByIdAndDelete(user._id);
+      console.error('Error enviando correo de bienvenida:', mailError);
+      return res.status(500).json({ message: 'No se pudo enviar el correo de bienvenida. El usuario no fue creado.' });
+    }
+
+    res.status(201).json({ message: 'Usuario creado exitosamente. Se envió el correo de bienvenida.' });
   } catch (error) {
     res.status(500).json({ message: 'Error al crear usuario' });
   }
