@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Copy, Facebook, Linkedin, Share2, Check, MessageCircle, X } from 'lucide-react';
 
 interface SharePostButtonProps {
@@ -28,7 +28,6 @@ export default function SharePostButton({
 }: SharePostButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
   const shareLinks = buildShareLinks(title, url);
 
   useEffect(() => {
@@ -36,16 +35,20 @@ export default function SharePostButton({
       return undefined;
     }
 
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
         setIsOpen(false);
       }
     };
 
-    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen]);
 
@@ -64,7 +67,7 @@ export default function SharePostButton({
     ? 'inline-flex items-center gap-2 rounded-full bg-brand-blue px-5 py-3 text-sm font-bold text-white shadow-lg transition-colors hover:bg-brand-red'
     : 'inline-flex items-center gap-2 rounded-full border border-gray-200 px-4 py-2 text-sm font-bold text-brand-blue transition-colors hover:border-brand-blue hover:bg-brand-blue/5';
 
-  const inlineLinks = [
+  const shareOptions = [
     {
       href: shareLinks.whatsapp,
       label: 'WhatsApp',
@@ -92,102 +95,83 @@ export default function SharePostButton({
   ];
 
   return (
-    <div ref={containerRef} className={`relative ${className}`.trim()}>
+    <>
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         className={buttonBaseClass}
         aria-expanded={isOpen}
+        aria-haspopup="dialog"
         aria-label="Compartir publicación"
       >
         <Share2 size={variant === 'full' ? 18 : 16} />
         <span>Compartir</span>
       </button>
 
-      {variant === 'full' && (
-        <div className="mt-4">
-          <p className="mb-3 text-xs font-black uppercase tracking-widest text-gray-400">
-            Compartir en redes
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {inlineLinks.map((link) => {
-              const Icon = link.icon;
-              return (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${link.className}`}
-                >
-                  <Icon size={16} />
-                  <span>{link.label}</span>
-                </a>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {isOpen && (
-        <div className="absolute right-0 top-full z-20 mt-3 w-72 rounded-2xl border border-gray-100 bg-white p-4 shadow-2xl">
-          <p className="mb-3 text-xs font-black uppercase tracking-widest text-gray-400">
-            Compartir en redes
-          </p>
-
-          <div className="grid grid-cols-2 gap-2">
-            <a
-              href={shareLinks.whatsapp}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setIsOpen(false)}
-              className="inline-flex items-center gap-2 rounded-xl bg-green-50 px-3 py-2 text-sm font-semibold text-green-700 transition-colors hover:bg-green-100"
-            >
-              <MessageCircle size={16} />
-              <span>WhatsApp</span>
-            </a>
-            <a
-              href={shareLinks.facebook}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setIsOpen(false)}
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100"
-            >
-              <Facebook size={16} />
-              <span>Facebook</span>
-            </a>
-            <a
-              href={shareLinks.x}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setIsOpen(false)}
-              className="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-200"
-            >
-              <X size={16} />
-              <span>X</span>
-            </a>
-            <a
-              href={shareLinks.linkedin}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setIsOpen(false)}
-              className="inline-flex items-center gap-2 rounded-xl bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700 transition-colors hover:bg-sky-100"
-            >
-              <Linkedin size={16} />
-              <span>LinkedIn</span>
-            </a>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:border-brand-blue hover:text-brand-blue"
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-brand-blue/45 px-4 py-6 backdrop-blur-sm"
+          onClick={() => setIsOpen(false)}
+          role="presentation"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Compartir publicación"
+            className={`w-full max-w-md rounded-[28px] bg-white p-6 shadow-2xl ${className}`.trim()}
+            onClick={(event) => event.stopPropagation()}
           >
-            {copied ? <Check size={16} /> : <Copy size={16} />}
-            <span>{copied ? 'Link copiado' : 'Copiar link'}</span>
-          </button>
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-gray-400">
+                  Compartir publicación
+                </p>
+                <h3 className="mt-2 text-xl font-black text-brand-blue">Elige dónde compartir</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200 hover:text-brand-blue"
+                aria-label="Cerrar modal de compartir"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {shareOptions.map((option) => {
+                const Icon = option.icon;
+                return (
+                  <a
+                    key={option.label}
+                    href={option.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setIsOpen(false)}
+                    className={`inline-flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-colors ${option.className}`}
+                  >
+                    <Icon size={18} />
+                    <span>{option.label}</span>
+                  </a>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 transition-colors hover:border-brand-blue hover:text-brand-blue"
+            >
+              {copied ? <Check size={16} /> : <Copy size={16} />}
+              <span>{copied ? 'Link copiado' : 'Copiar link'}</span>
+            </button>
+
+            <p className="mt-4 text-center text-xs text-gray-400">
+              El enlace se abrirá en una nueva pestaña.
+            </p>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

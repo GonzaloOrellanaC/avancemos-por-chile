@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import PostCard from '../components/PostCard';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, Eye } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
+import { shouldTrackView } from '../lib/viewTracking';
 
 interface TagItem {
   _id?: string;
@@ -16,6 +17,7 @@ interface Post {
   slug: string;
   bannerImage: string;
   createdAt: string;
+  viewCount: number;
   author: { _id?: string; name: string };
   tags?: TagItem[];
 }
@@ -27,6 +29,7 @@ const Blog = () => {
   const [page, setPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [selectedTag, setSelectedTag] = useState<TagItem | null>(null);
+  const [blogPageViewCount, setBlogPageViewCount] = useState(0);
   const LIMIT = 10;
   const activeTagSlug = searchParams.get('tag') || '';
 
@@ -47,6 +50,7 @@ const Blog = () => {
         } else {
           setTotalPages(data.totalPages || 1);
           setSelectedTag(data.selectedTag || null);
+          setBlogPageViewCount((current) => Math.max(current, data.blogPageViewCount || 0));
         }
       } catch (error) {
         console.error('Error fetching posts:', error);
@@ -60,6 +64,28 @@ const Blog = () => {
   useEffect(() => {
     setPage(1);
   }, [activeTagSlug]);
+
+  useEffect(() => {
+    const registerVisit = async () => {
+      if (!shouldTrackView('blog-page')) {
+        return;
+      }
+
+      try {
+        const { default: fetchApi } = await import('../lib/api');
+        const response = await fetchApi('/api/posts/blog/view');
+        const contentType = response.headers.get('content-type') || '';
+        if (!response.ok || !contentType.includes('application/json')) return;
+
+        const data = await response.json();
+        setBlogPageViewCount(data.viewCount || 0);
+      } catch (error) {
+        console.error('Error registering blog visit:', error);
+      }
+    };
+
+    registerVisit();
+  }, []);
 
   return (
     <div className="min-h-screen pt-24 pb-12 bg-gray-50">
@@ -75,6 +101,10 @@ const Blog = () => {
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             Mantente informado sobre nuestras actividades, propuestas y la actualidad nacional.
           </p>
+          <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-brand-blue/10 bg-white px-4 py-2 text-sm font-semibold text-brand-blue shadow-sm">
+            <Eye size={16} className="text-brand-red" />
+            <span>{blogPageViewCount.toLocaleString('es-CL')} visitas al blog</span>
+          </div>
           {selectedTag && (
             <div className="mt-6 inline-flex items-center gap-3 rounded-full bg-brand-blue/10 px-5 py-3 text-brand-blue font-bold">
               <span>Filtrando por #{selectedTag.name}</span>

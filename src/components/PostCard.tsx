@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Calendar, User, ArrowRight } from 'lucide-react';
+import { Calendar, User, ArrowRight, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SharePostButton from './SharePostButton';
 
@@ -10,6 +10,7 @@ interface PostProp {
   slug: string;
   bannerImage?: string;
   createdAt: string;
+  viewCount?: number;
   author?: { _id?: string; name: string };
   tags?: Array<{ _id?: string; name: string; slug: string }>;
 }
@@ -53,6 +54,10 @@ export default function PostCard({ post, index = 0 }: Props) {
             ) : (
               <span>{post.author?.name}</span>
             )}
+          </div>
+          <div className="flex items-center space-x-1">
+            <Eye size={14} />
+            <span>{(post.viewCount || 0).toLocaleString('es-CL')}</span>
           </div>
         </div>
 

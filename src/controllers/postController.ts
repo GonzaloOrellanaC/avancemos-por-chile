@@ -3,16 +3,20 @@ import { Post } from '../models/Post.ts';
 import { User } from '../models/User.ts';
 import { Notification } from '../models/Notification.ts';
 import { Tag } from '../models/Tag.ts';
+import { SiteMetric } from '../models/SiteMetric.ts';
 import type { AuthRequest } from '../middleware/auth.ts';
 import slugify from 'slugify';
 import jwt from 'jsonwebtoken';
 import { generateShareImagesForBanner } from '../lib/shareImages.ts';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_here';
+const BLOG_PAGE_METRIC_KEY = 'blog-page';
+const VIEW_DEDUP_WINDOW_MS = 5000;
 type PostStatus = 'draft' | 'in_review' | 'changes_requested' | 'published';
 type PostHistoryAction = 'created' | 'updated' | 'submitted_for_review' | 'changes_requested' | 'resubmitted_for_review' | 'published' | 'moved_to_draft';
 
 const POST_STATUSES = new Set<PostStatus>(['draft', 'in_review', 'changes_requested', 'published']);
+const recentViewRegistry = new Map<string, number>();
 
 function canReviewPosts(role?: string) {
   return role === 'admin' || role === 'editor';
@@ -139,6 +143,43 @@ async function resolvePostTagIds(inputTags: unknown, actorId: string) {
   return resolvedTags.filter(Boolean);
 }
 
+async function getBlogPageViewCount() {
+  const metric = await SiteMetric.findOne({ key: BLOG_PAGE_METRIC_KEY }).select('viewCount');
+  return metric?.viewCount || 0;
+}
+
+function getRequestIp(req: AuthRequest) {
+  const forwardedFor = req.headers['x-forwarded-for'];
+  const forwardedIp = Array.isArray(forwardedFor)
+    ? forwardedFor[0]
+    : typeof forwardedFor === 'string'
+      ? forwardedFor.split(',')[0]
+      : '';
+
+  return (forwardedIp || req.ip || req.socket.remoteAddress || 'unknown')
+    .trim()
+    .toLowerCase();
+}
+
+function shouldCountView(req: AuthRequest, resourceKey: string) {
+  const now = Date.now();
+
+  for (const [key, timestamp] of recentViewRegistry.entries()) {
+    if (now - timestamp >= VIEW_DEDUP_WINDOW_MS) {
+      recentViewRegistry.delete(key);
+    }
+  }
+
+  const dedupKey = `${getRequestIp(req)}:${resourceKey}`;
+  const lastSeenAt = recentViewRegistry.get(dedupKey);
+  if (typeof lastSeenAt === 'number' && now - lastSeenAt < VIEW_DEDUP_WINDOW_MS) {
+    return false;
+  }
+
+  recentViewRegistry.set(dedupKey, now);
+  return true;
+}
+
 export const getPosts = async (req: AuthRequest, res: Response) => {
   try {
     const page = parseInt(String(req.query.page || '1'), 10) || 1;
@@ -166,9 +207,34 @@ export const getPosts = async (req: AuthRequest, res: Response) => {
       .skip((page - 1) * limit)
       .limit(limit);
 
-    res.json({ posts, total, page, totalPages, limit, selectedTag });
+    const blogPageViewCount = await getBlogPageViewCount();
+
+    res.json({ posts, total, page, totalPages, limit, selectedTag, blogPageViewCount });
   } catch (error) {
     res.status(500).json({ message: 'Error al obtener publicaciones' });
+  }
+};
+
+export const incrementBlogPageView = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!shouldCountView(req, BLOG_PAGE_METRIC_KEY)) {
+      const viewCount = await getBlogPageViewCount();
+      return res.json({ viewCount, deduplicated: true });
+    }
+
+    const metric = await SiteMetric.findOneAndUpdate(
+      { key: BLOG_PAGE_METRIC_KEY },
+      { $inc: { viewCount: 1 } },
+      {
+        upsert: true,
+        returnDocument: 'after',
+        setDefaultsOnInsert: true,
+      },
+    ).select('viewCount');
+
+    res.json({ viewCount: metric?.viewCount || 0, deduplicated: false });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al registrar la visita del blog' });
   }
 };
 
@@ -263,6 +329,35 @@ export const getPostBySlug = async (req: AuthRequest, res: Response) => {
     }
   } catch (error) {
     res.status(500).json({ message: 'Error al obtener la publicación por slug' });
+  }
+};
+
+export const incrementPostView = async (req: AuthRequest, res: Response) => {
+  try {
+    const { slug } = req.params;
+
+    if (!shouldCountView(req, `post:${slug}`)) {
+      const post = await Post.findOne({ slug, status: 'published' }).select('viewCount');
+      if (!post) {
+        return res.status(404).json({ message: 'Publicación no encontrada' });
+      }
+
+      return res.json({ viewCount: post.viewCount || 0, deduplicated: true });
+    }
+
+    const post = await Post.findOneAndUpdate(
+      { slug, status: 'published' },
+      { $inc: { viewCount: 1 } },
+      { returnDocument: 'after' },
+    ).select('viewCount');
+
+    if (!post) {
+      return res.status(404).json({ message: 'Publicación no encontrada' });
+    }
+
+    res.json({ viewCount: post.viewCount || 0, deduplicated: false });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al registrar la visita de la publicación' });
   }
 };
 

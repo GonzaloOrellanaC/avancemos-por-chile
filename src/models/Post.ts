@@ -23,6 +23,7 @@ const postSchema = new mongoose.Schema({
   bannerImage: { type: String },
   bannerImageToShare: { type: String },
   bannerImageToShareX: { type: String },
+  viewCount: { type: Number, default: 0 },
   content: [{
     type: { type: String, enum: ['paragraph', 'image', 'pdf'], required: true },
     value: { type: String, required: true },

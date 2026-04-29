@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Calendar, User, ArrowLeft, FileText, Download, Loader2 } from 'lucide-react';
+import { Calendar, User, ArrowLeft, FileText, Download, Loader2, Eye } from 'lucide-react';
 import SharePostButton from '../components/SharePostButton';
+import { shouldTrackView } from '../lib/viewTracking';
 
 interface ContentBlock {
   type: 'paragraph' | 'image' | 'pdf';
@@ -16,6 +17,7 @@ interface Post {
   bannerImage: string;
   content: ContentBlock[];
   createdAt: string;
+  viewCount: number;
   author: { _id?: string; name: string };
   tags?: Array<{ _id?: string; name: string; slug: string }>;
 }
@@ -31,9 +33,19 @@ const PostDetail = () => {
       try {
         const { default: fetchApi } = await import('../lib/api');
         const response = await fetchApi(`/api/posts/slug/${slug}`);
-        if (response.ok) {
+        const responseContentType = response.headers.get('content-type') || '';
+        if (response.ok && responseContentType.includes('application/json')) {
           const data = await response.json();
           setPost(data);
+
+          if (slug && shouldTrackView(`post:${slug}`)) {
+            const visitResponse = await fetchApi(`/api/posts/slug/${slug}/view`);
+            const visitContentType = visitResponse.headers.get('content-type') || '';
+            if (visitResponse.ok && visitContentType.includes('application/json')) {
+              const visitData = await visitResponse.json();
+              setPost((currentPost) => currentPost ? { ...currentPost, viewCount: visitData.viewCount || currentPost.viewCount || 0 } : currentPost);
+            }
+          }
         } else {
           setPost(null);
         }
@@ -90,7 +102,7 @@ const PostDetail = () => {
               <SharePostButton title={post.title} url={shareUrl} variant="full" className="md:flex-shrink-0" />
             </div>
 
-            <div className="flex items-center space-x-6 text-sm text-gray-500 mb-12 pb-8 border-b border-gray-100">
+            <div className="flex flex-wrap items-center gap-6 text-sm text-gray-500 mb-12 pb-8 border-b border-gray-100">
               <div className="flex items-center space-x-2">
                 <Calendar size={18} className="text-brand-red" />
                 <span>{new Date(post.createdAt).toLocaleDateString()}</span>
@@ -102,6 +114,10 @@ const PostDetail = () => {
                 ) : (
                   <span>{post.author.name}</span>
                 ))}
+              </div>
+              <div className="flex items-center space-x-2">
+                <Eye size={18} className="text-brand-red" />
+                <span>{(post.viewCount || 0).toLocaleString('es-CL')} vistas</span>
               </div>
             </div>
 
