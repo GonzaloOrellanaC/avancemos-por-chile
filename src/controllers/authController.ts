@@ -157,6 +157,32 @@ export const getUsers = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const validateToken = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: 'Token inválido' });
+    }
+
+    const user = await User.findById(userId).select('_id name email role');
+    if (!user) {
+      return res.status(401).json({ message: 'La sesión ya no es válida' });
+    }
+
+    res.json({
+      valid: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al validar la sesión' });
+  }
+};
+
 export const forgotPassword = async (req: Request, res: Response) => {
   // Mock implementation for now
   res.json({ message: 'Si el correo existe, se enviará un enlace de recuperación' });
@@ -240,7 +266,7 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
     }
 
     await user.save();
-    const safe = user.toObject(); delete safe.password; delete safe.resetPasswordToken; delete safe.resetPasswordExpires;
+    const { password: _password, resetPasswordToken: _resetPasswordToken, resetPasswordExpires: _resetPasswordExpires, ...safe } = user.toObject();
     console.log('Updated user', safe);
     res.json(safe);
   } catch (error) {

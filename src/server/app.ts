@@ -3,6 +3,7 @@ import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import authRoutes from '../routes/authRoutes.ts';
+import adminRoutes from '../routes/adminRoutes.ts';
 import postRoutes from '../routes/postRoutes.ts';
 import uploadRoutes from '../routes/uploadRoutes.ts';
 import pageRoutes from '../routes/pageRoutes.ts';
@@ -63,6 +64,7 @@ export function createApp() {
   app.use('/uploads', express.static(uploadsPath));
 
   app.use('/api/auth', authRoutes);
+  app.use('/api/admin', adminRoutes);
   app.use('/api/posts', postRoutes);
   app.use('/api/notifications', notificationRoutes);
   app.use('/api/tags', tagRoutes);

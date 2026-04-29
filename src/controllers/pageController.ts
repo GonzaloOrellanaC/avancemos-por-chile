@@ -3,6 +3,10 @@ import { Page } from '../models/Page.ts';
 import type { AuthRequest } from '../middleware/auth.ts';
 import slugify from 'slugify';
 
+function isAdmin(role?: string) {
+  return role === 'admin';
+}
+
 export const getPages = async (req: AuthRequest, res: Response) => {
   try {
     const pages = await Page.find({ status: 'published' });
@@ -25,6 +29,10 @@ export const getPageBySlug = async (req: AuthRequest, res: Response) => {
 
 export const upsertPage = async (req: AuthRequest, res: Response) => {
   try {
+    if (!isAdmin(req.user?.role)) {
+      return res.status(403).json({ message: 'No autorizado' });
+    }
+
     const { id, title, slug, hero, sections, isHome, status } = req.body;
     
     let page;
@@ -55,6 +63,10 @@ export const upsertPage = async (req: AuthRequest, res: Response) => {
 
 export const deletePage = async (req: AuthRequest, res: Response) => {
   try {
+    if (!isAdmin(req.user?.role)) {
+      return res.status(403).json({ message: 'No autorizado' });
+    }
+
     const { id } = req.params;
     await Page.findByIdAndDelete(id);
     res.json({ message: 'Página eliminada' });

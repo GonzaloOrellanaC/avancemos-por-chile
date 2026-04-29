@@ -4,13 +4,19 @@ import { User } from '../models/User.ts';
 import { Notification } from '../models/Notification.ts';
 import { Tag } from '../models/Tag.ts';
 import { SiteMetric } from '../models/SiteMetric.ts';
+import { GeoVisitMetric } from '../models/GeoVisitMetric.ts';
 import type { AuthRequest } from '../middleware/auth.ts';
 import slugify from 'slugify';
 import jwt from 'jsonwebtoken';
 import { generateShareImagesForBanner } from '../lib/shareImages.ts';
+import { resolveCountryFromIp } from '../lib/geoIp.ts';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_here';
+const SITE_PAGE_METRIC_KEY = 'site-page';
+const SITE_COUNTRY_METRIC_KEY = 'site-country';
+const SITE_PATH_METRIC_PREFIX = 'site-path:';
 const BLOG_PAGE_METRIC_KEY = 'blog-page';
+const BLOG_COUNTRY_METRIC_KEY = 'blog-page-country';
 const VIEW_DEDUP_WINDOW_MS = 5000;
 type PostStatus = 'draft' | 'in_review' | 'changes_requested' | 'published';
 type PostHistoryAction = 'created' | 'updated' | 'submitted_for_review' | 'changes_requested' | 'resubmitted_for_review' | 'published' | 'moved_to_draft';
@@ -20,6 +26,10 @@ const recentViewRegistry = new Map<string, number>();
 
 function canReviewPosts(role?: string) {
   return role === 'admin' || role === 'editor';
+}
+
+function isAdminRole(role?: string) {
+  return role === 'admin';
 }
 
 function resolveRequestedStatus(requestedStatus: unknown, role?: string, fallback: PostStatus = 'draft') {
@@ -148,6 +158,55 @@ async function getBlogPageViewCount() {
   return metric?.viewCount || 0;
 }
 
+async function getMetricViewCount(key: string) {
+  const metric = await SiteMetric.findOne({ key }).select('viewCount');
+  return metric?.viewCount || 0;
+}
+
+async function getCountrySummary(resourceKey: string, limit = 250) {
+  const countries = await GeoVisitMetric.find({ resourceKey })
+    .sort({ viewCount: -1, countryName: 1 })
+    .limit(limit)
+    .select('countryCode countryName viewCount -_id');
+
+  const totalViews = countries.reduce((sum, country) => sum + (country.viewCount || 0), 0);
+
+  return {
+    totalCountries: countries.length,
+    totalViews,
+    countries: countries.map((country) => ({
+      countryCode: country.countryCode,
+      countryName: country.countryName,
+      viewCount: country.viewCount || 0,
+    })),
+  };
+}
+
+function normalizeTrackedPath(rawPath: unknown) {
+  if (typeof rawPath !== 'string') {
+    return null;
+  }
+
+  const trimmedPath = rawPath.trim();
+  if (!trimmedPath.startsWith('/')) {
+    return null;
+  }
+
+  const [pathname] = trimmedPath.split('?');
+  return pathname.replace(/\/+$/, '') || '/';
+}
+
+function isPublicTrackedPath(pathname: string) {
+  const privatePrefixes = ['/admin', '/editor', '/profile', '/notifications', '/page-editor'];
+  const privateExactPaths = ['/login', '/forgot-password', '/reset-password'];
+
+  if (privateExactPaths.includes(pathname)) {
+    return false;
+  }
+
+  return !privatePrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
 function getRequestIp(req: AuthRequest) {
   const forwardedFor = req.headers['x-forwarded-for'];
   const forwardedIp = Array.isArray(forwardedFor)
@@ -159,6 +218,52 @@ function getRequestIp(req: AuthRequest) {
   return (forwardedIp || req.ip || req.socket.remoteAddress || 'unknown')
     .trim()
     .toLowerCase();
+}
+
+async function trackCountryView(req: AuthRequest, resourceKey: string) {
+  const geo = await resolveCountryFromIp(getRequestIp(req));
+  if (!geo) {
+    return null;
+  }
+
+  await GeoVisitMetric.findOneAndUpdate(
+    {
+      resourceKey,
+      countryCode: geo.countryCode,
+    },
+    {
+      $set: {
+        countryName: geo.countryName,
+        lastSeenAt: new Date(),
+      },
+      $inc: { viewCount: 1 },
+    },
+    {
+      upsert: true,
+      returnDocument: 'after',
+      setDefaultsOnInsert: true,
+    },
+  );
+
+  return geo;
+}
+
+async function incrementMetricView(metricKey: string) {
+  const metric = await SiteMetric.findOneAndUpdate(
+    { key: metricKey },
+    { $inc: { viewCount: 1 } },
+    {
+      upsert: true,
+      returnDocument: 'after',
+      setDefaultsOnInsert: true,
+    },
+  ).select('viewCount');
+
+  return metric?.viewCount || 0;
+}
+
+function getSitePathMetricKey(pathname: string) {
+  return `${SITE_PATH_METRIC_PREFIX}${pathname}`;
 }
 
 function shouldCountView(req: AuthRequest, resourceKey: string) {
@@ -222,19 +327,110 @@ export const incrementBlogPageView = async (req: AuthRequest, res: Response) => 
       return res.json({ viewCount, deduplicated: true });
     }
 
-    const metric = await SiteMetric.findOneAndUpdate(
-      { key: BLOG_PAGE_METRIC_KEY },
-      { $inc: { viewCount: 1 } },
-      {
-        upsert: true,
-        returnDocument: 'after',
-        setDefaultsOnInsert: true,
-      },
-    ).select('viewCount');
+    const viewCount = await incrementMetricView(BLOG_PAGE_METRIC_KEY);
 
-    res.json({ viewCount: metric?.viewCount || 0, deduplicated: false });
+    const country = await trackCountryView(req, BLOG_COUNTRY_METRIC_KEY);
+
+    res.json({
+      viewCount,
+      deduplicated: false,
+      country,
+    });
   } catch (error) {
     res.status(500).json({ message: 'Error al registrar la visita del blog' });
+  }
+};
+
+export const getBlogPageView = async (_req: AuthRequest, res: Response) => {
+  try {
+    const viewCount = await getBlogPageViewCount();
+    res.json({ viewCount });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener la metrica del blog' });
+  }
+};
+
+export const getBlogCountryMetrics = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!isAdminRole(req.user?.role)) {
+      return res.status(403).json({ message: 'No tienes permiso para ver metricas por pais' });
+    }
+
+    const [summary, viewCount] = await Promise.all([
+      getCountrySummary(BLOG_COUNTRY_METRIC_KEY),
+      getMetricViewCount(BLOG_PAGE_METRIC_KEY),
+    ]);
+    res.json({ ...summary, viewCount });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener metricas por pais' });
+  }
+};
+
+export const trackSitePageView = async (req: AuthRequest, res: Response) => {
+  try {
+    const trackedPath = normalizeTrackedPath(req.body?.path);
+    if (!trackedPath || !isPublicTrackedPath(trackedPath)) {
+      return res.status(400).json({ message: 'Ruta no valida para metricas publicas' });
+    }
+
+    const dedupKey = `site:${trackedPath}`;
+    if (!shouldCountView(req, dedupKey)) {
+      const siteViewCount = await getMetricViewCount(SITE_PAGE_METRIC_KEY);
+      const payload: Record<string, unknown> = {
+        deduplicated: true,
+        siteViewCount,
+        trackedPath,
+      };
+
+      if (trackedPath === '/blog') {
+        payload.blogPageViewCount = await getBlogPageViewCount();
+      }
+
+      return res.json(payload);
+    }
+
+    const [siteViewCount, country] = await Promise.all([
+      incrementMetricView(SITE_PAGE_METRIC_KEY),
+      trackCountryView(req, SITE_COUNTRY_METRIC_KEY),
+    ]);
+
+    await incrementMetricView(getSitePathMetricKey(trackedPath));
+
+    const payload: Record<string, unknown> = {
+      deduplicated: false,
+      siteViewCount,
+      trackedPath,
+      country,
+    };
+
+    if (trackedPath === '/blog') {
+      const [blogPageViewCount] = await Promise.all([
+        incrementMetricView(BLOG_PAGE_METRIC_KEY),
+        trackCountryView(req, BLOG_COUNTRY_METRIC_KEY),
+      ]);
+      payload.blogPageViewCount = blogPageViewCount;
+    }
+
+    res.json(payload);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al registrar la visita del sitio' });
+  }
+};
+
+export const getSiteCountryMetrics = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!isAdminRole(req.user?.role)) {
+      return res.status(403).json({ message: 'No tienes permiso para ver metricas del sitio' });
+    }
+
+    const [summary, viewCount] = await Promise.all([
+      getCountrySummary(SITE_COUNTRY_METRIC_KEY),
+      getMetricViewCount(SITE_PAGE_METRIC_KEY),
+    ]);
+
+    res.json({ ...summary, viewCount });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener metricas del sitio' });
   }
 };
 

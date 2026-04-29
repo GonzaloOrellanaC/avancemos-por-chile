@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import PostCard from '../components/PostCard';
 import { Loader2, X, Eye } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { shouldTrackView } from '../lib/viewTracking';
 
 interface TagItem {
   _id?: string;
@@ -66,11 +65,7 @@ const Blog = () => {
   }, [activeTagSlug]);
 
   useEffect(() => {
-    const registerVisit = async () => {
-      if (!shouldTrackView('blog-page')) {
-        return;
-      }
-
+    const refreshBlogViewCount = async () => {
       try {
         const { default: fetchApi } = await import('../lib/api');
         const response = await fetchApi('/api/posts/blog/view');
@@ -80,11 +75,23 @@ const Blog = () => {
         const data = await response.json();
         setBlogPageViewCount(data.viewCount || 0);
       } catch (error) {
-        console.error('Error registering blog visit:', error);
+        console.error('Error fetching blog visit count:', error);
       }
     };
 
-    registerVisit();
+    const handleTrackedView = (event: Event) => {
+      const customEvent = event as CustomEvent<{ trackedPath?: string; blogPageViewCount?: number }>;
+      if (customEvent.detail?.trackedPath === '/blog' && typeof customEvent.detail.blogPageViewCount === 'number') {
+        setBlogPageViewCount(customEvent.detail.blogPageViewCount);
+      }
+    };
+
+    window.addEventListener('site-view-tracked', handleTrackedView as EventListener);
+    refreshBlogViewCount();
+
+    return () => {
+      window.removeEventListener('site-view-tracked', handleTrackedView as EventListener);
+    };
   }, []);
 
   return (

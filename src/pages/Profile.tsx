@@ -193,6 +193,13 @@ const Profile = () => {
                 <div className="flex gap-6 items-center">
                   {user?.role === 'admin' && (
                     <>
+                      <Link to="/admin/dashboard" className="flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
+                        <div className="w-20 h-20 rounded-full bg-brand-blue/10 flex items-center justify-center mb-3">
+                          <Layout className="text-brand-blue" size={36} />
+                        </div>
+                        <div className="text-sm font-semibold">Dashboard</div>
+                      </Link>
+
                       <Link to="/admin/pages" className="flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
                         <div className="w-20 h-20 rounded-full bg-brand-blue/10 flex items-center justify-center mb-3">
                           <Layout className="text-brand-blue" size={36} />
@@ -206,11 +213,18 @@ const Profile = () => {
                         </div>
                         <div className="text-sm font-semibold">Usuarios</div>
                       </Link>
+
+                      <Link to="/blog/manage" className="flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
+                        <div className="w-20 h-20 rounded-full bg-brand-blue/10 flex items-center justify-center mb-3">
+                          <FileText className="text-brand-blue" size={36} />
+                        </div>
+                        <div className="text-sm font-semibold">Blog</div>
+                      </Link>
                     </>
                   )}
 
                   {(user?.role === 'editor' || user?.role === 'columnista') && (
-                    <Link to="/admin/blog" className="flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
+                    <Link to="/blog/manage" className="flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
                       <div className="w-20 h-20 rounded-full bg-brand-blue/10 flex items-center justify-center mb-3">
                         <FileText className="text-brand-blue" size={36} />
                       </div>

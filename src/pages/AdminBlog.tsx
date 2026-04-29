@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FileText, Plus, Edit, Trash2, Loader2, ArrowLeft } from 'lucide-react';
+import { FileText, Plus, Edit, Trash2, Loader2, ArrowLeft, Globe2, BarChart3 } from 'lucide-react';
 
 interface Post {
   _id: string;
@@ -13,6 +13,12 @@ interface Post {
     email: string;
     role: string;
   };
+}
+
+interface CountryMetric {
+  countryCode: string;
+  countryName: string;
+  viewCount: number;
 }
 
 type UserRole = 'admin' | 'editor' | 'columnista';
@@ -35,6 +41,9 @@ export default function AdminBlog() {
   const navigate = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
   const [reviewPosts, setReviewPosts] = useState<Post[]>([]);
+  const [siteCountries, setSiteCountries] = useState<CountryMetric[]>([]);
+  const [siteViewCount, setSiteViewCount] = useState(0);
+  const [totalTrackedCountries, setTotalTrackedCountries] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserRole>('editor');
 
@@ -64,6 +73,19 @@ export default function AdminBlog() {
             ? fetchApi('/api/posts/review-queue', { headers: { Authorization: `Bearer ${token}` } })
             : Promise.resolve(null),
         ]);
+
+        if (currentRole === 'admin') {
+          const siteCountriesRes = await fetchApi('/api/posts/site/countries', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (siteCountriesRes.ok) {
+            const analytics = await siteCountriesRes.json();
+            setSiteCountries(Array.isArray(analytics.countries) ? analytics.countries : []);
+            setSiteViewCount(analytics.viewCount || 0);
+            setTotalTrackedCountries(analytics.totalCountries || 0);
+          }
+        }
 
         if (myPostsRes.ok) setPosts(await myPostsRes.json());
         if (reviewQueueRes?.ok) setReviewPosts(await reviewQueueRes.json());
@@ -113,6 +135,66 @@ export default function AdminBlog() {
             <span>{userRole === 'columnista' ? 'Nueva Columna' : 'Nueva Entrada'}</span>
           </Link>
         </div>
+
+        {userRole === 'admin' && (
+          <section className="mb-10 rounded-3xl border border-brand-blue/10 bg-gradient-to-br from-slate-50 via-white to-brand-blue/5 p-6 shadow-sm">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full bg-brand-blue/10 px-3 py-1 text-xs font-black uppercase tracking-[0.2em] text-brand-blue">
+                  <Globe2 size={14} />
+                  <span>Visitas del sitio</span>
+                </div>
+                <h2 className="mt-4 text-2xl font-black text-brand-blue">Ranking de países de toda la app</h2>
+                <p className="mt-2 max-w-2xl text-sm text-slate-600">
+                  Este resumen usa tracking global por ruta pública, así que cuenta navegación en el sitio completo y no solo la portada del blog.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl bg-white px-5 py-4 shadow-sm ring-1 ring-brand-blue/10">
+                  <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-slate-400">
+                    <BarChart3 size={14} />
+                    <span>Vistas públicas</span>
+                  </div>
+                  <div className="mt-2 text-3xl font-black text-brand-blue">{siteViewCount.toLocaleString('es-CL')}</div>
+                </div>
+                <div className="rounded-2xl bg-white px-5 py-4 shadow-sm ring-1 ring-brand-blue/10">
+                  <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Países detectados</div>
+                  <div className="mt-2 text-3xl font-black text-brand-red">{totalTrackedCountries.toLocaleString('es-CL')}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-100 bg-white">
+              <table className="w-full min-w-[480px]">
+                <thead>
+                  <tr className="border-b border-slate-100 text-left">
+                    <th className="px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-slate-400">#</th>
+                    <th className="px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-slate-400">País</th>
+                    <th className="px-4 py-4 text-xs font-black uppercase tracking-[0.2em] text-slate-400">Código</th>
+                    <th className="px-4 py-4 text-right text-xs font-black uppercase tracking-[0.2em] text-slate-400">Visitas</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {siteCountries.slice(0, 12).map((country, index) => (
+                    <tr key={country.countryCode}>
+                      <td className="px-4 py-4 text-sm font-bold text-slate-400">{index + 1}</td>
+                      <td className="px-4 py-4 font-bold text-brand-blue">{country.countryName}</td>
+                      <td className="px-4 py-4 text-sm font-semibold uppercase text-slate-500">{country.countryCode}</td>
+                      <td className="px-4 py-4 text-right font-black text-brand-red">{country.viewCount.toLocaleString('es-CL')}</td>
+                    </tr>
+                  ))}
+                  {!siteCountries.length && (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center text-sm text-slate-500">
+                        Aun no hay suficientes visitas publicas para mostrar ranking por pais.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
 
         {(userRole === 'editor' || userRole === 'admin') && reviewPosts.length > 0 && (
           <div className="mb-10">
