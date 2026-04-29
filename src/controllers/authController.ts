@@ -73,6 +73,34 @@ const sendWelcomeEmail = async ({
   });
 };
 
+const sendTestEmail = async ({
+  to,
+  requestedBy,
+}: {
+  to: string;
+  requestedBy: string;
+}) => {
+  const transporter = createMailTransport();
+  const from = process.env.CONTACT_EMAIL || process.env.SMTP_USER;
+
+  return transporter.sendMail({
+    from: from ? `Avancemos por Chile <${from}>` : undefined,
+    to,
+    subject: 'Prueba de correo SMTP',
+    text: [
+      'Este es un correo de prueba enviado desde la API de Avancemos por Chile.',
+      '',
+      `Solicitado por: ${requestedBy}`,
+      `Fecha: ${new Date().toISOString()}`,
+    ].join('\n'),
+    html: [
+      '<p>Este es un correo de prueba enviado desde la API de Avancemos por Chile.</p>',
+      `<p><strong>Solicitado por:</strong> ${requestedBy}</p>`,
+      `<p><strong>Fecha:</strong> ${new Date().toISOString()}</p>`,
+    ].join(''),
+  });
+};
+
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
@@ -180,6 +208,38 @@ export const validateToken = async (req: AuthRequest, res: Response) => {
     });
   } catch (error) {
     res.status(500).json({ message: 'Error al validar la sesión' });
+  }
+};
+
+export const sendEmailTest = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'No autorizado' });
+    }
+
+    const to = typeof req.query.to === 'string' ? req.query.to.trim() : '';
+    const fallbackEmail = process.env.CONTACT_EMAIL || process.env.SMTP_USER || '';
+    const targetEmail = to || fallbackEmail;
+
+    if (!targetEmail) {
+      return res.status(400).json({ message: 'Debes indicar el query param to o configurar CONTACT_EMAIL/SMTP_USER' });
+    }
+
+    const info = await sendTestEmail({
+      to: targetEmail,
+      requestedBy: req.user.email || req.user.id || 'admin',
+    });
+
+    res.json({
+      message: 'Correo de prueba enviado',
+      to: targetEmail,
+      messageId: info.messageId,
+      accepted: info.accepted,
+      rejected: info.rejected,
+    });
+  } catch (error) {
+    console.error('Error enviando correo de prueba:', error);
+    res.status(500).json({ message: 'No se pudo enviar el correo de prueba' });
   }
 };
 
