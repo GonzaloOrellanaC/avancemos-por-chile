@@ -64,7 +64,7 @@ export default function PublicUser() {
     <div className="min-h-screen pt-24 pb-12 bg-gray-50">
       <div className="container mx-auto px-4 max-w-3xl">
         <div className="bg-white p-8 rounded-2xl shadow-md border border-gray-100 mb-6">
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-col items-center text-center gap-4 md:flex-row md:items-center md:text-left">
             <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100">
               {user.profileImage ? <img src={user.profileImage} alt={user.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-400">No hay</div>}
             </div>
