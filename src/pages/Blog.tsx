@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import PostCard from '../components/PostCard';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+
+interface TagItem {
+  _id?: string;
+  name: string;
+  slug: string;
+}
 
 interface Post {
   _id: string;
@@ -10,20 +17,26 @@ interface Post {
   bannerImage: string;
   createdAt: string;
   author: { _id?: string; name: string };
+  tags?: TagItem[];
 }
 
 const Blog = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
+  const [selectedTag, setSelectedTag] = useState<TagItem | null>(null);
   const LIMIT = 10;
+  const activeTagSlug = searchParams.get('tag') || '';
 
   useEffect(() => {
     const fetchPosts = async () => {
+      setIsLoading(true);
       try {
         const { default: fetchApi } = await import('../lib/api');
-        const response = await fetchApi(`/api/posts?page=${page}&limit=${LIMIT}`);
+        const tagQuery = activeTagSlug ? `&tag=${encodeURIComponent(activeTagSlug)}` : '';
+        const response = await fetchApi(`/api/posts?page=${page}&limit=${LIMIT}${tagQuery}`);
         const data = await response.json();
         console.log('Fetched posts data:', data);
         // support both shapes: array or { posts, total, page, totalPages, limit }
@@ -33,6 +46,7 @@ const Blog = () => {
           setTotalPages(1);
         } else {
           setTotalPages(data.totalPages || 1);
+          setSelectedTag(data.selectedTag || null);
         }
       } catch (error) {
         console.error('Error fetching posts:', error);
@@ -41,7 +55,11 @@ const Blog = () => {
       }
     };
     fetchPosts();
-  }, [page]);
+  }, [page, activeTagSlug]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeTagSlug]);
 
   return (
     <div className="min-h-screen pt-24 pb-12 bg-gray-50">
@@ -57,6 +75,18 @@ const Blog = () => {
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             Mantente informado sobre nuestras actividades, propuestas y la actualidad nacional.
           </p>
+          {selectedTag && (
+            <div className="mt-6 inline-flex items-center gap-3 rounded-full bg-brand-blue/10 px-5 py-3 text-brand-blue font-bold">
+              <span>Filtrando por #{selectedTag.name}</span>
+              <button
+                type="button"
+                onClick={() => setSearchParams({})}
+                className="inline-flex items-center justify-center rounded-full bg-white p-1 text-brand-red"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
         </header>
 
         {isLoading ? (

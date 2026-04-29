@@ -11,6 +11,7 @@ interface PostProp {
   bannerImage?: string;
   createdAt: string;
   author?: { _id?: string; name: string };
+  tags?: Array<{ _id?: string; name: string; slug: string }>;
 }
 
 interface Props {
@@ -58,6 +59,20 @@ export default function PostCard({ post, index = 0 }: Props) {
         <h2 className="text-2xl font-bold text-brand-blue mb-4 line-clamp-2 group-hover:text-brand-red transition-colors">
           {post.title}
         </h2>
+
+        {!!post.tags?.length && (
+          <div className="mb-4 flex flex-wrap gap-2">
+            {post.tags.map((tag) => (
+              <Link
+                key={tag.slug}
+                to={`/blog?tag=${encodeURIComponent(tag.slug)}`}
+                className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs font-bold text-brand-blue hover:bg-brand-red hover:text-white"
+              >
+                #{tag.name}
+              </Link>
+            ))}
+          </div>
+        )}
 
         <div className="flex items-center justify-between gap-3">
           <Link

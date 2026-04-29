@@ -13,6 +13,8 @@ import {
   GripVertical,
   MessageSquareQuote,
   History,
+  Tags,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -46,7 +48,42 @@ interface LoadedPost {
   bannerImage?: string;
   status: PostStatus;
   content: Array<{ type: 'paragraph' | 'image' | 'pdf'; value: string; caption?: string }>;
+  tags?: TagOption[];
   history?: PostHistoryItem[];
+}
+
+interface TagOption {
+  _id?: string;
+  name: string;
+  slug: string;
+  pendingSync?: boolean;
+}
+
+interface PendingTagRecord {
+  name: string;
+  slug: string;
+}
+
+const PENDING_TAGS_STORAGE_KEY = 'pending-post-tags';
+
+function isNetworkLikeError(error: unknown) {
+  if (!(error instanceof Error)) return false;
+  const normalizedMessage = error.message.toLowerCase();
+  return error.name === 'TypeError'
+    || normalizedMessage.includes('networkerror')
+    || normalizedMessage.includes('failed to fetch')
+    || normalizedMessage.includes('load failed');
+}
+
+function toTagSlug(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
 }
 
 const statusOptionsByRole: Record<UserRole, Array<{ value: PostStatus; label: string }>> = {
@@ -82,6 +119,101 @@ const Editor = () => {
   const [history, setHistory] = useState<PostHistoryItem[]>([]);
   const [editorFeedback, setEditorFeedback] = useState('');
   const [originalStatus, setOriginalStatus] = useState<PostStatus>('draft');
+  const [availableTags, setAvailableTags] = useState<TagOption[]>([]);
+  const [selectedTags, setSelectedTags] = useState<TagOption[]>([]);
+  const [tagQuery, setTagQuery] = useState('');
+
+  const mergeAvailableTag = (tag: TagOption) => {
+    setAvailableTags((current) => {
+      const existing = current.find((item) => item.slug === tag.slug);
+      if (existing) {
+        return current.map((item) => item.slug === tag.slug ? { ...item, ...tag, pendingSync: false } : item);
+      }
+      return [...current, { ...tag, pendingSync: false }].sort((left, right) => left.name.localeCompare(right.name, 'es'));
+    });
+  };
+
+  const replaceSelectedTag = (tag: TagOption) => {
+    setSelectedTags((current) => current.map((item) => item.slug === tag.slug ? { ...tag, pendingSync: false } : item));
+  };
+
+  const readPendingTags = (): PendingTagRecord[] => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const stored = window.localStorage.getItem(PENDING_TAGS_STORAGE_KEY);
+      if (!stored) return [];
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const writePendingTags = (pendingTags: PendingTagRecord[]) => {
+    if (typeof window === 'undefined') return;
+    if (!pendingTags.length) {
+      window.localStorage.removeItem(PENDING_TAGS_STORAGE_KEY);
+      return;
+    }
+    window.localStorage.setItem(PENDING_TAGS_STORAGE_KEY, JSON.stringify(pendingTags));
+  };
+
+  const queuePendingTag = (tag: PendingTagRecord) => {
+    const pendingTags = readPendingTags();
+    if (pendingTags.some((item) => item.slug === tag.slug)) return;
+    writePendingTags([...pendingTags, tag]);
+  };
+
+  const dequeuePendingTag = (slug: string) => {
+    const pendingTags = readPendingTags().filter((item) => item.slug !== slug);
+    writePendingTags(pendingTags);
+  };
+
+  const upsertTagNow = async (tag: PendingTagRecord) => {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('No autorizado');
+    const { default: fetchApi } = await import('../lib/api');
+    const response = await fetchApi('/api/tags', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ name: tag.name }),
+    });
+
+    if (!response.ok) {
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const errorResult = await response.json().catch(() => ({}));
+        throw new Error(errorResult.message || 'No se pudo crear el tag');
+      }
+
+      const rawText = await response.text().catch(() => '');
+      const cleanedText = rawText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      throw new Error(cleanedText || `Error ${response.status} al crear el tag`);
+    }
+
+    const savedTag = await response.json() as TagOption;
+    mergeAvailableTag(savedTag);
+    replaceSelectedTag(savedTag);
+    dequeuePendingTag(savedTag.slug);
+    return savedTag;
+  };
+
+  const syncPendingTags = async () => {
+    const pendingTags = readPendingTags();
+    for (const pendingTag of pendingTags) {
+      try {
+        await upsertTagNow(pendingTag);
+      } catch (error) {
+        if (!isNetworkLikeError(error)) {
+          console.error('Error synchronizing pending tag', error);
+        }
+        return;
+      }
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -102,9 +234,20 @@ const Editor = () => {
       }
     }
 
+    fetchTags();
+    syncPendingTags();
+
+    const handleOnline = () => {
+      syncPendingTags();
+    };
+    window.addEventListener('online', handleOnline);
+
     if (id) {
       fetchPost();
     }
+    return () => {
+      window.removeEventListener('online', handleOnline);
+    };
   }, [id, navigate]);
 
   useEffect(() => {
@@ -114,6 +257,24 @@ const Editor = () => {
       setStatus(allowedStatuses[0]);
     }
   }, [status, userRole]);
+
+  const fetchTags = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const { default: fetchApi } = await import('../lib/api');
+      const response = await fetchApi('/api/tags', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const tags = await response.json() as TagOption[];
+        setAvailableTags(tags);
+      }
+    } catch (error) {
+      console.error('Error fetching tags', error);
+    }
+  };
 
   const fetchPost = async () => {
     setIsLoading(true);
@@ -131,6 +292,7 @@ const Editor = () => {
         setStatus(data.status as PostStatus);
         setOriginalStatus(data.status as PostStatus);
         setHistory(data.history || []);
+        setSelectedTags(data.tags || []);
         // Add IDs to blocks for Reorder
         setBlocks(data.content.map((b: any, i: number) => ({ ...b, id: `block-${i}-${Date.now()}` })));
       }
@@ -198,6 +360,7 @@ const Editor = () => {
 
   const handleSave = async () => {
     if (!title) return toast.error('El título es obligatorio');
+    if (selectedTags.length > 5) return toast.error('Cada publicación puede tener un máximo de 5 tags');
 
     if (userRole === 'columnista' && status === 'published') {
       return toast.error('Como columnista solo puedes guardar borradores o enviar a revisión');
@@ -228,6 +391,7 @@ const Editor = () => {
           title,
           bannerImage,
           status,
+          tags: selectedTags.map((tag) => tag.name),
           editorFeedback: status === 'changes_requested' ? editorFeedback : undefined,
           content: blocks.map(({ type, value, caption }) => ({ type, value, caption }))
         })
@@ -255,6 +419,59 @@ const Editor = () => {
 
   const statusOptions = statusOptionsByRole[userRole];
   const latestFeedback = [...history].reverse().find((entry) => entry.action === 'changes_requested' && entry.comment?.trim());
+  const tagSuggestions = availableTags.filter((tag) => {
+    const alreadySelected = selectedTags.some((selectedTag) => selectedTag.slug === tag.slug);
+    if (alreadySelected) return false;
+    if (!tagQuery.trim()) return true;
+    return tag.name.toLowerCase().includes(tagQuery.trim().toLowerCase());
+  }).slice(0, 8);
+
+  const addTag = (rawValue: string) => {
+    const normalizedName = rawValue.trim().replace(/\s+/g, ' ');
+    if (!normalizedName) return;
+    if (selectedTags.length >= 5) {
+      toast.error('Solo puedes asignar hasta 5 tags por publicación');
+      return;
+    }
+
+    const slug = toTagSlug(normalizedName);
+    if (!slug) return;
+    if (selectedTags.some((tag) => tag.slug === slug)) {
+      setTagQuery('');
+      return;
+    }
+
+    const existingTag = availableTags.find((tag) => tag.slug === slug);
+    const nextTag = existingTag || { name: normalizedName, slug, pendingSync: false };
+    setSelectedTags((current) => [...current, nextTag]);
+    setTagQuery('');
+
+    if (existingTag) {
+      return;
+    }
+
+    const pendingTag = { name: normalizedName, slug };
+    upsertTagNow(pendingTag).catch((error) => {
+      if (isNetworkLikeError(error)) {
+        queuePendingTag(pendingTag);
+        setAvailableTags((current) => {
+          if (current.some((item) => item.slug === slug)) return current;
+          return [...current, { ...pendingTag, pendingSync: true }].sort((left, right) => left.name.localeCompare(right.name, 'es'));
+        });
+        setSelectedTags((current) => current.map((item) => item.slug === slug ? { ...item, pendingSync: true } : item));
+        toast.error('No se pudo conectar con el servidor. El tag se guardará automáticamente cuando vuelva la conexión.');
+        return;
+      }
+
+      setSelectedTags((current) => current.filter((item) => item.slug !== slug));
+      toast.error(error instanceof Error ? error.message : 'No se pudo crear el tag');
+    });
+  };
+
+  const removeTag = (slug: string) => {
+    setSelectedTags((current) => current.filter((tag) => tag.slug !== slug));
+  };
+
   const saveLabel = userRole === 'columnista' && status === 'in_review'
     ? originalStatus === 'changes_requested'
       ? 'Reenviar a revisión'
@@ -361,6 +578,81 @@ const Editor = () => {
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="bg-white p-8 rounded-2xl shadow-md border border-gray-100 space-y-4">
+            <div className="flex items-center gap-3 text-brand-blue">
+              <Tags size={22} />
+              <h2 className="text-xl font-bold">Tags de la publicación</h2>
+            </div>
+            <p className="text-sm text-gray-500">
+              Puedes asociar hasta 5 etiquetas. Si escribes una nueva y no existe, el sistema la creará al guardar. Si ya existe, reutilizará la etiqueta existente.
+            </p>
+
+            <div className="flex flex-wrap gap-2">
+              {selectedTags.map((tag) => (
+                <span
+                  key={tag.slug}
+                  className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-bold ${
+                    tag.pendingSync
+                      ? 'bg-amber-100 text-amber-800 ring-1 ring-amber-300'
+                      : 'bg-brand-blue/10 text-brand-blue'
+                  }`}
+                >
+                  <span>#{tag.name}</span>
+                  {tag.pendingSync && (
+                    <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider">
+                      Pendiente
+                    </span>
+                  )}
+                  <button type="button" onClick={() => removeTag(tag.slug)} className="text-brand-blue/70 hover:text-brand-red">
+                    <X size={14} />
+                  </button>
+                </span>
+              ))}
+              {selectedTags.length === 0 && <span className="text-sm text-gray-400">No hay tags seleccionados.</span>}
+            </div>
+
+            <div className="relative">
+              <input
+                type="text"
+                value={tagQuery}
+                onChange={(e) => setTagQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ',') {
+                    e.preventDefault();
+                    addTag(tagQuery);
+                  }
+                }}
+                placeholder="Escribe un tag y presiona Enter"
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-blue"
+              />
+
+              {tagSuggestions.length > 0 && tagQuery.trim() && (
+                <div className="absolute left-0 right-0 top-full z-10 mt-2 rounded-2xl border border-gray-100 bg-white shadow-xl overflow-hidden">
+                  {tagSuggestions.map((tag) => (
+                    <button
+                      key={tag.slug}
+                      type="button"
+                      onClick={() => addTag(tag.name)}
+                      className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
+                    >
+                      <span className="font-semibold text-brand-blue">#{tag.name}</span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Existente</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="text-xs font-bold uppercase tracking-wider text-gray-400">
+              {selectedTags.length}/5 tags seleccionados
+            </div>
+            {selectedTags.some((tag) => tag.pendingSync) && (
+              <div className="text-xs font-semibold text-amber-700">
+                Algunos tags están pendientes de sincronización y se guardarán automáticamente cuando vuelva la conexión.
+              </div>
+            )}
           </div>
 
           {(userRole === 'editor' || userRole === 'admin') && (

@@ -29,6 +29,7 @@ const postSchema = new mongoose.Schema({
     caption: { type: String }
   }],
   author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  tags: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Tag' }],
   status: { type: String, enum: ['draft', 'in_review', 'changes_requested', 'published'], default: 'draft' },
   history: { type: [postHistorySchema], default: [] },
 }, { timestamps: true });

@@ -17,6 +17,7 @@ interface Post {
   content: ContentBlock[];
   createdAt: string;
   author: { _id?: string; name: string };
+  tags?: Array<{ _id?: string; name: string; slug: string }>;
 }
 
 const PostDetail = () => {
@@ -103,6 +104,20 @@ const PostDetail = () => {
                 ))}
               </div>
             </div>
+
+            {!!post.tags?.length && (
+              <div className="mb-10 flex flex-wrap gap-3">
+                {post.tags.map((tag) => (
+                  <Link
+                    key={tag.slug}
+                    to={`/blog?tag=${encodeURIComponent(tag.slug)}`}
+                    className="rounded-full bg-brand-blue/10 px-4 py-2 text-sm font-bold text-brand-blue hover:bg-brand-red hover:text-white"
+                  >
+                    #{tag.name}
+                  </Link>
+                ))}
+              </div>
+            )}
 
             <div className="space-y-8">
               {post.content.map((block, index) => (

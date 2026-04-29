@@ -2,6 +2,7 @@ import type { Response } from 'express';
 import { Post } from '../models/Post.ts';
 import { User } from '../models/User.ts';
 import { Notification } from '../models/Notification.ts';
+import { Tag } from '../models/Tag.ts';
 import type { AuthRequest } from '../middleware/auth.ts';
 import slugify from 'slugify';
 import jwt from 'jsonwebtoken';
@@ -99,21 +100,73 @@ async function safeGenerateShareImages(slug: string, bannerImage?: string | null
   }
 }
 
+function normalizeTagName(input: unknown) {
+  if (typeof input !== 'string') return '';
+  return input.trim().replace(/\s+/g, ' ');
+}
+
+function getTagSlug(input: string) {
+  return slugify(input, { lower: true, strict: true, trim: true, locale: 'es' });
+}
+
+async function resolvePostTagIds(inputTags: unknown, actorId: string) {
+  if (!Array.isArray(inputTags)) return [];
+
+  const normalizedTags = inputTags
+    .map((tag) => normalizeTagName(tag))
+    .filter(Boolean)
+    .map((name) => ({ name, slug: getTagSlug(name) }))
+    .filter((tag) => tag.slug);
+
+  const uniqueTags = Array.from(new Map(normalizedTags.map((tag) => [tag.slug, tag])).values());
+  if (uniqueTags.length > 5) {
+    throw new Error('Cada publicación puede tener un máximo de 5 tags');
+  }
+
+  const resolvedTags = await Promise.all(uniqueTags.map(async (tag) => {
+    const result = await Tag.findOneAndUpdate(
+      { slug: tag.slug },
+      { $setOnInsert: { name: tag.name, slug: tag.slug, createdBy: actorId } },
+      {
+        upsert: true,
+        returnDocument: 'after',
+      },
+    ).select('_id');
+
+    return result?._id || null;
+  }));
+
+  return resolvedTags.filter(Boolean);
+}
+
 export const getPosts = async (req: AuthRequest, res: Response) => {
   try {
     const page = parseInt(String(req.query.page || '1'), 10) || 1;
     const limit = Math.min(parseInt(String(req.query.limit || '10'), 10) || 10, 50);
-    const filter = { status: 'published' };
+    const tagSlug = typeof req.query.tag === 'string' ? req.query.tag.trim() : '';
+    const filter: Record<string, unknown> = { status: 'published' };
+    let selectedTag: { name: string; slug: string } | null = null;
+
+    if (tagSlug) {
+      const tag = await Tag.findOne({ slug: tagSlug }).select('name slug');
+      if (!tag) {
+        return res.json({ posts: [], total: 0, page, totalPages: 1, limit, selectedTag: null });
+      }
+
+      filter.tags = tag._id;
+      selectedTag = { name: tag.name, slug: tag.slug };
+    }
 
     const total = await Post.countDocuments(filter);
     const totalPages = Math.max(1, Math.ceil(total / limit));
     const posts = await Post.find(filter)
       .populate('author', 'name')
+      .populate('tags', 'name slug')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit);
 
-    res.json({ posts, total, page, totalPages, limit });
+    res.json({ posts, total, page, totalPages, limit, selectedTag });
   } catch (error) {
     res.status(500).json({ message: 'Error al obtener publicaciones' });
   }
@@ -121,7 +174,9 @@ export const getPosts = async (req: AuthRequest, res: Response) => {
 
 export const getMyPosts = async (req: AuthRequest, res: Response) => {
   try {
-    const posts = await Post.find({ author: req.user.id }).sort({ createdAt: -1 });
+    const posts = await Post.find({ author: req.user.id })
+      .populate('tags', 'name slug')
+      .sort({ createdAt: -1 });
     res.json(posts);
   } catch (error) {
     res.status(500).json({ message: 'Error al obtener tus publicaciones' });
@@ -136,6 +191,7 @@ export const getReviewQueue = async (req: AuthRequest, res: Response) => {
 
     const posts = await Post.find({ status: 'in_review' })
       .populate('author', 'name email role')
+      .populate('tags', 'name slug')
       .sort({ updatedAt: -1, createdAt: -1 });
 
     res.json(posts);
@@ -149,6 +205,7 @@ export const getPostById = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const post = await Post.findById(id)
       .populate('author', 'name email role')
+      .populate('tags', 'name slug')
       .populate('history.actor', 'name role email');
     if (!post) return res.status(404).json({ message: 'Publicación no encontrada' });
 
@@ -182,6 +239,7 @@ export const getPostBySlug = async (req: AuthRequest, res: Response) => {
     const { slug } = req.params;
     const post = await Post.findOne({ slug })
       .populate('author', 'name email role')
+      .populate('tags', 'name slug')
       .populate('history.actor', 'name role email');
     if (!post) return res.status(404).json({ message: 'Publicación no encontrada' });
 
@@ -210,13 +268,14 @@ export const getPostBySlug = async (req: AuthRequest, res: Response) => {
 
 export const createPost = async (req: AuthRequest, res: Response) => {
   try {
-    const { title, content, bannerImage, status } = req.body;
+    const { title, content, bannerImage, status, tags } = req.body;
     const nextStatus = resolveRequestedStatus(status, req.user?.role, 'draft');
     if (!nextStatus) {
       return res.status(403).json({ message: 'El rol columnista no puede publicar directamente' });
     }
     const slug = slugify(title, { lower: true, strict: true }) + '-' + Date.now();
     const shareImages = await safeGenerateShareImages(slug, bannerImage);
+    const resolvedTagIds = await resolvePostTagIds(tags, req.user.id);
     
     const post = new Post({
       title,
@@ -224,6 +283,7 @@ export const createPost = async (req: AuthRequest, res: Response) => {
       content,
       bannerImage,
       ...shareImages,
+      tags: resolvedTagIds,
       status: nextStatus,
       author: req.user.id,
       history: [
@@ -236,6 +296,7 @@ export const createPost = async (req: AuthRequest, res: Response) => {
     });
 
     await post.save();
+  await post.populate('tags', 'name slug');
 
     if (nextStatus === 'in_review') {
       const reviewerIds = await getReviewerIds();
@@ -258,7 +319,7 @@ export const createPost = async (req: AuthRequest, res: Response) => {
 export const updatePost = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { title, content, bannerImage, status, editorFeedback } = req.body;
+    const { title, content, bannerImage, status, editorFeedback, tags } = req.body;
 
     const post = await Post.findById(id);
     if (!post) return res.status(404).json({ message: 'Publicación no encontrada' });
@@ -289,6 +350,7 @@ export const updatePost = async (req: AuthRequest, res: Response) => {
     }
 
     const previousStatus = post.status as PostStatus;
+    const resolvedTagIds = await resolvePostTagIds(tags, req.user.id);
 
     const nextTitle = title || post.title;
     const nextSlug = title && title !== post.title
@@ -313,6 +375,7 @@ export const updatePost = async (req: AuthRequest, res: Response) => {
     post.bannerImage = nextBannerImage;
     post.bannerImageToShare = shareImages.bannerImageToShare || post.bannerImageToShare;
     post.bannerImageToShareX = shareImages.bannerImageToShareX || post.bannerImageToShareX;
+    post.tags = resolvedTagIds;
     post.status = nextStatus;
 
     const feedbackComment = typeof editorFeedback === 'string' ? editorFeedback.trim() : '';
@@ -331,6 +394,7 @@ export const updatePost = async (req: AuthRequest, res: Response) => {
     post.history.push(createHistoryEntry(req.user, historyAction, nextStatus, feedbackComment));
 
     await post.save();
+  await post.populate('tags', 'name slug');
 
     const authorId = String(post.author);
     const reviewerIds = await getReviewerIds();
@@ -396,6 +460,7 @@ export const getPostsByAuthor = async (req: AuthRequest, res: Response) => {
     const totalPages = Math.max(1, Math.ceil(total / limit));
     const posts = await Post.find(filter)
       .populate('author', 'name')
+      .populate('tags', 'name slug')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit);
