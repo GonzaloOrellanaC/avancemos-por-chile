@@ -128,13 +128,13 @@ const Profile = () => {
         },
         body: JSON.stringify({ name: newName, email: newEmail, password: newPassword, role: newRole })
       });
+      const result = await response.json();
 
       if (response.ok) {
-        toast.success('Usuario creado');
+        toast.success(result.message || 'Usuario creado');
         setNewName(''); setNewEmail(''); setNewPassword(''); setNewRole('editor');
       } else {
-        const err = await response.json();
-        toast.error(err.message || 'Error al crear usuario');
+        toast.error(result.message || 'Error al crear usuario');
       }
     } catch (error) {
       toast.error('Error de conexión');

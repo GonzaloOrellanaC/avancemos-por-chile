@@ -123,15 +123,21 @@ export const createUser = async (req: AuthRequest, res: Response) => {
     const user = new User({ name, email, password, role: nextRole });
     await user.save();
 
+    let welcomeEmailSent = true;
+
     try {
       await sendWelcomeEmail({ name, email, password, role: nextRole });
     } catch (mailError) {
-      await User.findByIdAndDelete(user._id);
+      welcomeEmailSent = false;
       console.error('Error enviando correo de bienvenida:', mailError);
-      return res.status(500).json({ message: 'No se pudo enviar el correo de bienvenida. El usuario no fue creado.' });
     }
 
-    res.status(201).json({ message: 'Usuario creado exitosamente. Se envió el correo de bienvenida.' });
+    res.status(201).json({
+      message: welcomeEmailSent
+        ? 'Usuario creado exitosamente. Se envió el correo de bienvenida.'
+        : 'Usuario creado exitosamente, pero no se pudo enviar el correo de bienvenida.',
+      welcomeEmailSent,
+    });
   } catch (error) {
     res.status(500).json({ message: 'Error al crear usuario' });
   }
