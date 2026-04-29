@@ -9,6 +9,7 @@ import uploadRoutes from '../routes/uploadRoutes.ts';
 import pageRoutes from '../routes/pageRoutes.ts';
 import notificationRoutes from '../routes/notificationRoutes.ts';
 import tagRoutes from '../routes/tagRoutes.ts';
+import contactRoutes from '../routes/contactRoutes.ts';
 import { errorHandler } from '../middleware/errorHandler.ts';
 import { renderAppHtml, SITE_ORIGIN } from './meta.ts';
 
@@ -70,6 +71,7 @@ export function createApp() {
   app.use('/api/tags', tagRoutes);
   app.use('/api/upload', uploadRoutes);
   app.use('/api/pages', pageRoutes);
+  app.use('/api/contact', contactRoutes);
   app.use(errorHandler);
 
   app.get('/api/health', (_req, res) => {

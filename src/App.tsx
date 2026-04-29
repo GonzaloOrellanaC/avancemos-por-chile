@@ -14,6 +14,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Privacy from './pages/Privacy';
 import Legal from './pages/Legal';
+import Contact from './pages/Contact';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import AdminPages from './pages/AdminPages';
@@ -256,6 +257,7 @@ export default function App() {
             <Route path="/p/:slug" element={<DynamicPage />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:slug" element={<PostDetail />} />
+            <Route path="/contacto" element={<Contact />} />
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />

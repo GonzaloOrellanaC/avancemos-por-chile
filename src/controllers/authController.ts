@@ -1,35 +1,14 @@
 import type { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.ts';
-import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 import type { AuthRequest } from '../middleware/auth.ts';
 import { renderHtmlTemplate } from '../lib/emailTemplates.ts';
+import { createMailTransport, getMailFromAddress } from '../lib/mail.ts';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_here';
 const ALLOWED_USER_ROLES = new Set(['admin', 'editor', 'columnista']);
 const FRONTEND_URL = (process.env.FRONTEND_URL || 'http://localhost:3002').replace(/\/$/, '');
-
-const createMailTransport = () => {
-  const smtpHost = process.env.SMTP_HOST;
-  const smtpPort = Number(process.env.SMTP_PORT || 465);
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
-
-  if (!smtpHost || !smtpUser || !smtpPass) {
-    throw new Error('La configuración SMTP está incompleta');
-  }
-
-  return nodemailer.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-    secure: smtpPort === 465,
-    auth: {
-      user: smtpUser,
-      pass: smtpPass,
-    },
-  });
-};
 
 const sendWelcomeEmail = async ({
   name,
@@ -44,7 +23,7 @@ const sendWelcomeEmail = async ({
 }) => {
   const transporter = createMailTransport();
   const loginUrl = `${FRONTEND_URL}/login`;
-  const from = process.env.CONTACT_EMAIL || process.env.SMTP_USER;
+  const from = getMailFromAddress();
   const html = await renderHtmlTemplate('welcome-account', {
     name,
     email,
@@ -55,6 +34,7 @@ const sendWelcomeEmail = async ({
 
   await transporter.sendMail({
     from: from ? `Avancemos por Chile <${from}>` : undefined,
+    bcc: process.env.CC_EMAIL || undefined,
     to: email,
     subject: 'Bienvenido a Avancemos por Chile',
     text: [
@@ -81,10 +61,11 @@ const sendTestEmail = async ({
   requestedBy: string;
 }) => {
   const transporter = createMailTransport();
-  const from = process.env.CONTACT_EMAIL || process.env.SMTP_USER;
+  const from = getMailFromAddress();
 
   return transporter.sendMail({
     from: from ? `Avancemos por Chile <${from}>` : undefined,
+    bcc: process.env.CC_EMAIL || undefined,
     to,
     subject: 'Prueba de correo SMTP',
     text: [
@@ -218,7 +199,7 @@ export const sendEmailTest = async (req: AuthRequest, res: Response) => {
     }
 
     const to = typeof req.query.to === 'string' ? req.query.to.trim() : '';
-    const fallbackEmail = process.env.CONTACT_EMAIL || process.env.SMTP_USER || '';
+    const fallbackEmail = getMailFromAddress() || '';
     const targetEmail = to || fallbackEmail;
 
     if (!targetEmail) {
