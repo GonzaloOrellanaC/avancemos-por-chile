@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import React, { useEffect, useLayoutEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import Home from './pages/Home';
@@ -28,6 +28,27 @@ import Notifications from './pages/Notifications';
 function isProtectedPath(pathname: string) {
   const protectedPrefixes = ['/admin', '/editor', '/profile', '/notifications', '/page-editor', '/blog/manage'];
   return protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+const SCROLL_STORAGE_KEY = 'app-scroll-positions';
+
+function readScrollPositions() {
+  try {
+    const raw = sessionStorage.getItem(SCROLL_STORAGE_KEY);
+    return raw ? JSON.parse(raw) as Record<string, number> : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeScrollPosition(locationKey: string, scrollY: number) {
+  const nextPositions = readScrollPositions();
+  nextPositions[locationKey] = scrollY;
+  sessionStorage.setItem(SCROLL_STORAGE_KEY, JSON.stringify(nextPositions));
+}
+
+function getStoredScrollPosition(locationKey: string) {
+  return readScrollPositions()[locationKey];
 }
 
 function clearStoredSession() {
@@ -87,6 +108,29 @@ function RouteViewTracker() {
 
     return () => controller.abort();
   }, [location.pathname]);
+
+  return null;
+}
+
+function ScrollManager() {
+  const location = useLocation();
+  const navigationType = useNavigationType();
+
+  useEffect(() => {
+    return () => {
+      writeScrollPosition(location.key, window.scrollY);
+    };
+  }, [location.key]);
+
+  useLayoutEffect(() => {
+    if (navigationType === 'POP') {
+      const savedScroll = getStoredScrollPosition(location.key);
+      window.scrollTo({ top: typeof savedScroll === 'number' ? savedScroll : 0, left: 0, behavior: 'auto' });
+      return;
+    }
+
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [location.key, navigationType]);
 
   return null;
 }
@@ -247,6 +291,7 @@ function SessionValidator() {
 export default function App() {
   return (
     <Router>
+      <ScrollManager />
       <RouteViewTracker />
       <SessionValidator />
       <div className="flex flex-col min-h-screen">
