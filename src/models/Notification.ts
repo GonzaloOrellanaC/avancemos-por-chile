@@ -6,7 +6,7 @@ const notificationSchema = new mongoose.Schema({
   triggeredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   type: {
     type: String,
-    enum: ['review_submitted', 'changes_requested', 'post_published'],
+    enum: ['review_submitted', 'changes_requested', 'post_published', 'ticket_created', 'ticket_reply'],
     required: true,
   },
   title: { type: String, required: true },

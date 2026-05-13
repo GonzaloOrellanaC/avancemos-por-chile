@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Mail, ArrowRight, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import JoinWhatsApp from './JoinWhatsApp';
+import InviteProjects from './InviteProjects';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import type { Swiper as SwiperType } from 'swiper';
 import 'swiper/css';
@@ -185,7 +187,7 @@ const ContactSection = () => {
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto text-center">
+        <div className="max-w-4xl mx-auto text-center" style={{marginTop: 200}}>
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
@@ -194,7 +196,8 @@ const ContactSection = () => {
           >
             <h2 className="text-4xl md:text-6xl font-black mb-8">¿QUIERES SER PARTE DEL CAMBIO?</h2>
             <p className="text-xl text-gray-300 mb-12 font-light">
-              Estamos construyendo una nueva forma de hacer política, desde la técnica y la ciudadanía. Escríbenos y avancemos juntos.
+              Si nos contactas por correo estás postulando para ser bloguero en Avancemos Por Chile. Incluye tu nombre completo, una breve biografía
+              y enlaces a tus publicaciones o escritos relevantes; nuestro equipo revisará las postulaciones y se contactará por correo.
             </p>
 
             <div className="inline-block group max-w-full">
@@ -213,6 +216,12 @@ const ContactSection = () => {
                 </div>
               </a>
             </div>
+            {/* Join WhatsApp and Invite Projects components */}
+            <div style={{height: 100}}></div>
+            <JoinWhatsApp />
+            <div style={{height: 100}}></div>
+            <InviteProjects />
+            <div style={{height: 100}}></div>
           </motion.div>
         </div>
       </div>

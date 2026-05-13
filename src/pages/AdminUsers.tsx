@@ -9,6 +9,7 @@ interface UserItem {
   email: string;
   role: string;
   createdAt: string;
+  isEnrolled?: boolean;
 }
 
 export default function AdminUsers() {
@@ -17,7 +18,8 @@ export default function AdminUsers() {
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [newRole, setNewRole] = useState<'editor' | 'admin' | 'columnista'>('editor');
+  const [newRole, setNewRole] = useState<'editor' | 'admin' | 'columnista' | 'usuario'>('usuario');
+  const [newIsEnrolled, setNewIsEnrolled] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
   const fetchUsers = async () => {
@@ -43,7 +45,7 @@ export default function AdminUsers() {
       const response = await fetchApi('/api/auth/create-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name: newName, email: newEmail, password: newPassword, role: newRole })
+        body: JSON.stringify({ name: newName, email: newEmail, password: newPassword, role: newRole, isEnrolled: newIsEnrolled })
       });
 
       if (response.ok) {
@@ -78,10 +80,15 @@ export default function AdminUsers() {
           <input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Contraseña" type="password" className="p-3 bg-gray-50 rounded-lg" />
           <div className="flex items-center space-x-2">
             <select value={newRole} onChange={(e) => setNewRole(e.target.value as any)} className="p-3 bg-gray-50 rounded-lg">
+              <option value="usuario">Usuario</option>
               <option value="editor">Editor</option>
               <option value="columnista">Columnista</option>
               <option value="admin">Admin</option>
             </select>
+            <label className="inline-flex items-center space-x-2">
+              <input type="checkbox" checked={newIsEnrolled} onChange={(e) => setNewIsEnrolled(e.target.checked)} />
+              <span className="text-sm">Enrolado</span>
+            </label>
             <button disabled={isCreating} className="bg-brand-blue text-white px-4 py-2 rounded-lg font-bold">{isCreating ? 'Creando...' : 'Crear'}</button>
           </div>
         </form>
@@ -97,6 +104,8 @@ export default function AdminUsers() {
                   <th className="pb-4 font-bold text-gray-400 uppercase text-xs tracking-wider">Nombre</th>
                   <th className="pb-4 font-bold text-gray-400 uppercase text-xs tracking-wider">Correo</th>
                   <th className="pb-4 font-bold text-gray-400 uppercase text-xs tracking-wider">Rol</th>
+                  <th className="pb-4 font-bold text-gray-400 uppercase text-xs tracking-wider">Enrolado</th>
+                  <th className="pb-4 font-bold text-gray-400 uppercase text-xs tracking-wider">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -105,6 +114,31 @@ export default function AdminUsers() {
                     <td className="py-4 font-bold text-brand-blue">{u.name}</td>
                     <td className="py-4 text-sm text-gray-500">{u.email}</td>
                     <td className="py-4 text-sm text-gray-500">{u.role}</td>
+                    <td className="py-4 text-sm text-gray-500">{u.isEnrolled ? 'Sí' : 'No'}</td>
+                    <td className="py-4">
+                      <div className="flex items-center gap-2">
+                        <button onClick={async () => {
+                          try {
+                            const token = localStorage.getItem('token');
+                            const { default: fetchApi } = await import('../lib/api');
+                            const res = await fetchApi(`/api/auth/users/${u._id}`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                              body: JSON.stringify({ isEnrolled: !u.isEnrolled })
+                            });
+                            if (res.ok) {
+                              await fetchUsers();
+                              toast.success('Estado de enrolamiento actualizado');
+                            } else {
+                              const err = await res.json();
+                              toast.error(err.message || 'Error');
+                            }
+                          } catch (err) {
+                            toast.error('Error de conexión');
+                          }
+                        }} className="rounded bg-slate-50 px-3 py-1 text-sm text-brand-blue">{u.isEnrolled ? 'Desenrolar' : 'Enrolar'}</button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

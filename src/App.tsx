@@ -6,6 +6,7 @@ import Home from './pages/Home';
 import DynamicPage from './pages/DynamicPage';
 import Blog from './pages/Blog';
 import Login from './pages/Login';
+import RegisterUsuario from './pages/RegisterUsuario';
 import Profile from './pages/Profile';
 import Editor from './pages/Editor';
 import PageEditor from './pages/PageEditor';
@@ -15,15 +16,20 @@ import ResetPassword from './pages/ResetPassword';
 import Privacy from './pages/Privacy';
 import Legal from './pages/Legal';
 import Contact from './pages/Contact';
+import SubmitProject from './pages/SubmitProject';
+import MySubmissions from './pages/MySubmissions';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import AdminPages from './pages/AdminPages';
 import AdminUsers from './pages/AdminUsers';
 import AdminBlog from './pages/AdminBlog';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminIntake from './pages/AdminIntake';
 import UserEdit from './pages/UserEdit';
 import PublicUser from './pages/PublicUser';
 import Notifications from './pages/Notifications';
+import Soporte from './pages/Soporte';
+import TicketDetail from './pages/TicketDetail';
 
 function isProtectedPath(pathname: string) {
   const protectedPrefixes = ['/admin', '/editor', '/profile', '/notifications', '/page-editor', '/blog/manage'];
@@ -304,6 +310,7 @@ export default function App() {
             <Route path="/blog/:slug" element={<PostDetail />} />
             <Route path="/contacto" element={<Contact />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/registro-usuario" element={<RegisterUsuario />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/u/:id" element={<PublicUser />} />
@@ -312,10 +319,14 @@ export default function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="/profile" element={<Profile />} />
               <Route path="/notifications" element={<Notifications />} />
+              <Route path="/mis-envios" element={<MySubmissions />} />
+              <Route path="/soporte" element={<Soporte />} />
+              <Route path="/soporte/:id" element={<TicketDetail />} />
               <Route path="/editor" element={<Editor />} />
               <Route path="/editor/:id" element={<Editor />} />
               <Route path="/blog/manage" element={<AdminBlog />} />
               <Route path="/profile/edit" element={<UserEdit />} />
+              <Route path="/cargar-nuevo-proyecto" element={<SubmitProject />} />
               <Route element={<AdminRoute />}>
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
                 <Route path="/admin/pages" element={<AdminPages />} />
@@ -323,6 +334,8 @@ export default function App() {
                 <Route path="/admin/blog" element={<AdminBlog />} />
                 <Route path="/page-editor/:slug" element={<PageEditor />} />
               </Route>
+              {/* Admin intake: accessible to admin and project_admin via ProtectedRoute */}
+              <Route path="/admin/intake" element={<AdminIntake />} />
             </Route>
           </Routes>
         </main>

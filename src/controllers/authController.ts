@@ -6,9 +6,92 @@ import type { AuthRequest } from '../middleware/auth.ts';
 import { renderHtmlTemplate } from '../lib/emailTemplates.ts';
 import { createMailTransport, getMailFromAddress } from '../lib/mail.ts';
 
+function isValidRut(raw: string | undefined) {
+  if (!raw) return false;
+  const rut = String(raw).replace(/\./g, '').replace(/-/g, '').toUpperCase().trim();
+  if (rut.length < 2) return false;
+  const body = rut.slice(0, -1);
+  const dv = rut.slice(-1);
+  if (!/^[0-9]+$/.test(body)) return false;
+
+  let sum = 0;
+  let multiplier = 2;
+  for (let i = body.length - 1; i >= 0; i--) {
+    sum += parseInt(body.charAt(i), 10) * multiplier;
+    multiplier = multiplier < 7 ? multiplier + 1 : 2;
+  }
+
+  const remainder = sum % 11;
+  const checkDigit = 11 - remainder;
+  let expected = '';
+  if (checkDigit === 11) expected = '0';
+  else if (checkDigit === 10) expected = 'K';
+  else expected = String(checkDigit);
+
+  return expected === dv;
+}
+
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_here';
-const ALLOWED_USER_ROLES = new Set(['admin', 'editor', 'columnista']);
+const ALLOWED_USER_ROLES = new Set(['admin', 'editor', 'columnista', 'project_admin', 'usuario']);
 const FRONTEND_URL = (process.env.FRONTEND_URL || 'http://localhost:3002').replace(/\/$/, '');
+const BACKEND_URL = (process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/$/, '');
+
+const sendEnrollmentEmail = async ({ name, email, userId }: { name: string; email: string; userId: string }) => {
+  const transporter = createMailTransport();
+  const from = getMailFromAddress();
+
+  const token = jwt.sign({ id: userId, action: 'activate' }, JWT_SECRET, { expiresIn: '7d' });
+  const activationUrl = `${BACKEND_URL}/api/auth/activate?token=${encodeURIComponent(token)}`;
+
+  const subject = 'Activa tu cuenta en Avancemos Por Chile';
+  const text = [
+    `Hola ${name},`,
+    '',
+    'Gracias por registrarte en Avancemos Por Chile.',
+    'Para activar tu cuenta y completar el enrolamiento, haz clic en el siguiente enlace:',
+    '',
+    activationUrl,
+    '',
+    'Si no solicitaste este correo, ignóralo.',
+  ].join('\n');
+
+  const html = [`<p>Hola ${name},</p>`, `<p>Gracias por registrarte en Avancemos Por Chile.</p>`, `<p>Para activar tu cuenta y completar el enrolamiento, haz clic en el siguiente enlace:</p>`, `<p><a href="${activationUrl}">Activar cuenta</a></p>`, `<p>Si no solicitaste este correo, ignóralo.</p>`].join('');
+
+  await transporter.sendMail({
+    from: from ? `Avancemos por Chile <${from}>` : undefined,
+    to: email,
+    subject,
+    text,
+    html,
+  });
+};
+
+const sendPostActivationEmail = async ({ name, email }: { name: string; email: string }) => {
+  const transporter = createMailTransport();
+  const from = getMailFromAddress();
+  const loginUrl = `${FRONTEND_URL}/login`;
+
+  const subject = 'Cuenta activada en Avancemos Por Chile';
+  const text = [
+    `Hola ${name},`,
+    '',
+    'Tu cuenta ha sido activada correctamente. Ahora puedes iniciar sesión:',
+    '',
+    loginUrl,
+    '',
+    'Gracias por sumarte a Avancemos Por Chile.',
+  ].join('\n');
+
+  const html = [`<p>Hola ${name},</p>`, `<p>Tu cuenta ha sido activada correctamente. Ahora puedes iniciar sesión:</p>`, `<p><a href="${loginUrl}">Iniciar sesión</a></p>`, `<p>Gracias por sumarte a Avancemos Por Chile.</p>`].join('');
+
+  await transporter.sendMail({
+    from: from ? `Avancemos por Chile <${from}>` : undefined,
+    to: email,
+    subject,
+    text,
+    html,
+  });
+};
 
 const sendWelcomeEmail = async ({
   name,
@@ -92,7 +175,7 @@ export const login = async (req: Request, res: Response) => {
     }
 
     const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '1d' });
-    res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
+    res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role, isEnrolled: !!user.isEnrolled } });
   } catch (error) {
     res.status(500).json({ message: 'Error en el servidor' });
   }
@@ -100,15 +183,80 @@ export const login = async (req: Request, res: Response) => {
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, documentId, phone, organization, enrollmentNotes } = req.body;
     const existingUser = await User.findOne({ email });
     if (existingUser) return res.status(400).json({ message: 'El usuario ya existe' });
 
-    const user = new User({ name, email, password });
+    // validate RUT if provided
+    if (documentId && !isValidRut(documentId)) {
+      return res.status(400).json({ message: 'RUT inválido' });
+    }
+
+    const user = new User({
+      name,
+      email,
+      password,
+      role: 'usuario',
+      isEnrolled: false,
+      enrollmentRequestedAt: new Date(),
+      documentId: documentId || undefined,
+      phone: phone || undefined,
+      organization: organization || undefined,
+      enrollmentNotes: enrollmentNotes || undefined,
+    });
+
     await user.save();
-    res.status(201).json({ message: 'Usuario creado exitosamente' });
+
+    try {
+      await sendEnrollmentEmail({ name: user.name, email: user.email, userId: String(user._id) });
+    } catch (mailErr) {
+      console.error('Error enviando email de enrolamiento:', mailErr);
+    }
+
+    res.status(201).json({ message: 'Usuario creado exitosamente. Revisa tu correo para activar la cuenta.' });
   } catch (error) {
     res.status(500).json({ message: 'Error al crear usuario' });
+  }
+};
+
+export const activateUser = async (req: Request, res: Response) => {
+  try {
+    const token = typeof req.query.token === 'string' ? req.query.token : '';
+    if (!token) return res.status(400).send('Token faltante');
+
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(400).send('Token inválido o expirado');
+    }
+
+    if (!decoded || decoded.action !== 'activate' || !decoded.id) {
+      return res.status(400).send('Token inválido');
+    }
+
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(404).send('Usuario no encontrado');
+
+    if (user.isEnrolled) {
+      return res.redirect(`${FRONTEND_URL}/login?activated=1`);
+    }
+
+    user.isEnrolled = true;
+    user.enrolledAt = new Date();
+    user.enrolledBy = undefined as any;
+    await user.save();
+
+    try {
+      await sendPostActivationEmail({ name: user.name, email: user.email });
+    } catch (mailErr) {
+      console.error('Error sending post-activation email:', mailErr);
+    }
+
+    return res.redirect(`${FRONTEND_URL}/login?activated=1`);
+  } catch (err) {
+    console.error('Error activating user:', err);
+    return res.status(500).send('Error activando usuario');
   }
 };
 
@@ -119,7 +267,7 @@ export const createUser = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: 'No autorizado' });
     }
 
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, isEnrolled } = req.body;
     if (!name || !email || !password) return res.status(400).json({ message: 'Faltan datos requeridos' });
     if (role && !ALLOWED_USER_ROLES.has(role)) {
       return res.status(400).json({ message: 'Rol inválido' });
@@ -129,7 +277,7 @@ export const createUser = async (req: AuthRequest, res: Response) => {
     if (existingUser) return res.status(400).json({ message: 'El usuario ya existe' });
 
     const nextRole = role && ALLOWED_USER_ROLES.has(role) ? role : 'editor';
-    const user = new User({ name, email, password, role: nextRole });
+    const user = new User({ name, email, password, role: nextRole, isEnrolled: !!isEnrolled });
     await user.save();
 
     let welcomeEmailSent = true;
@@ -173,7 +321,7 @@ export const validateToken = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'Token inválido' });
     }
 
-    const user = await User.findById(userId).select('_id name email role');
+    const user = await User.findById(userId).select('_id name email role isEnrolled');
     if (!user) {
       return res.status(401).json({ message: 'La sesión ya no es válida' });
     }
@@ -185,6 +333,7 @@ export const validateToken = async (req: AuthRequest, res: Response) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        isEnrolled: !!user.isEnrolled,
       },
     });
   } catch (error) {
@@ -273,6 +422,8 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
     if (decoded.id !== id && decoded.role !== 'admin') return res.status(403).json({ message: 'No tienes permiso' });
 
     const { profileImage, shortDescription, longDescription, isPublicProfile, name, email, currentPassword, newPassword } = req.body;
+    // Admin-only editable fields
+    const { role: requestedRole, isEnrolled: requestedIsEnrolled, enrollmentNotes, documentId, phone, organization } = req.body as any;
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
 
@@ -304,6 +455,34 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
         if (!ok) return res.status(401).json({ message: 'Contraseña actual incorrecta' });
         user.password = newPassword;
       }
+    }
+
+    // Admin can update role, enrollment status and identification fields
+    if (decoded.role === 'admin') {
+      if (requestedRole && ALLOWED_USER_ROLES.has(requestedRole)) {
+        user.role = requestedRole;
+      }
+
+      if (typeof requestedIsEnrolled === 'boolean' && requestedIsEnrolled !== user.isEnrolled) {
+        user.isEnrolled = requestedIsEnrolled;
+        if (requestedIsEnrolled) {
+          user.enrolledAt = new Date();
+          user.enrolledBy = decoded.id;
+        } else {
+          user.enrolledAt = undefined as any;
+          user.enrolledBy = undefined as any;
+        }
+      }
+
+      if (enrollmentNotes !== undefined) user.enrollmentNotes = enrollmentNotes;
+      if (documentId !== undefined) {
+        if (documentId && !isValidRut(documentId)) {
+          return res.status(400).json({ message: 'RUT inválido' });
+        }
+        user.documentId = documentId;
+      }
+      if (phone !== undefined) user.phone = phone;
+      if (organization !== undefined) user.organization = organization;
     }
 
     await user.save();

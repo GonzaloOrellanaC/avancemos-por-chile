@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { User, FileText, Plus, LogOut, Edit, Trash2, Loader2, Layout, Bell } from 'lucide-react';
+import { User, FileText, Plus, LogOut, Edit, Trash2, Loader2, Layout, Bell, HelpCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Post {
@@ -169,6 +169,7 @@ const Profile = () => {
                     <Edit size={20} />
                     <span className="font-medium">Editar perfil</span>
                   </Link>
+                  {/* moved quick actions to the main quick actions area */}
                   <Link to="/notifications" className="w-full flex items-center space-x-3 p-3 text-gray-600 hover:bg-gray-50 hover:text-brand-blue rounded-xl transition-all">
                     <Bell size={20} />
                     <span className="font-medium">Notificaciones</span>
@@ -237,6 +238,24 @@ const Profile = () => {
                       <Bell className="text-brand-blue" size={36} />
                     </div>
                     <div className="text-sm font-semibold">Notificaciones</div>
+                  </Link>
+                  <Link to="/soporte" className="flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
+                    <div className="w-20 h-20 rounded-full bg-brand-blue/10 flex items-center justify-center mb-3">
+                      <HelpCircle className="text-brand-blue" size={36} />
+                    </div>
+                    <div className="text-sm font-semibold">Soporte técnico</div>
+                  </Link>
+                  <Link to="/cargar-nuevo-proyecto" className="flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
+                    <div className="w-20 h-20 rounded-full bg-brand-blue/10 flex items-center justify-center mb-3">
+                      <Plus className="text-brand-blue" size={36} />
+                    </div>
+                    <div className="text-sm font-semibold">Cargar nuevo proyecto</div>
+                  </Link>
+                  <Link to="/mis-envios" className="flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
+                    <div className="w-20 h-20 rounded-full bg-brand-blue/10 flex items-center justify-center mb-3">
+                      <FileText className="text-brand-blue" size={36} />
+                    </div>
+                    <div className="text-sm font-semibold">Mis envíos</div>
                   </Link>
                 </div>
               </div>
