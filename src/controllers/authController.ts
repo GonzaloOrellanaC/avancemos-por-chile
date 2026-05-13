@@ -41,7 +41,8 @@ const sendEnrollmentEmail = async ({ name, email, userId }: { name: string; emai
   const from = getMailFromAddress();
 
   const token = jwt.sign({ id: userId, action: 'activate' }, JWT_SECRET, { expiresIn: '7d' });
-  const activationUrl = `${BACKEND_URL}/api/auth/activate?token=${encodeURIComponent(token)}`;
+  // Use frontend URL so activation link points to the client (production-safe)
+  const activationUrl = `${FRONTEND_URL.replace(/\/$/, '')}/activate?token=${encodeURIComponent(token)}`;
 
   const subject = 'Activa tu cuenta en Avancemos Por Chile';
   const text = [
