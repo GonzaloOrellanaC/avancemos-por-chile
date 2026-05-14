@@ -13,6 +13,7 @@ import PageEditor from './pages/PageEditor';
 import PostDetail from './pages/PostDetail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Activate from './pages/Activate';
 import Privacy from './pages/Privacy';
 import Legal from './pages/Legal';
 import Contact from './pages/Contact';
@@ -310,6 +311,7 @@ export default function App() {
             <Route path="/blog/:slug" element={<PostDetail />} />
             <Route path="/contacto" element={<Contact />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/activate" element={<Activate />} />
             <Route path="/registro-usuario" element={<RegisterUsuario />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />

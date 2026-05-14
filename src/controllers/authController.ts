@@ -233,14 +233,17 @@ export const activateUser = async (req: Request, res: Response) => {
     }
 
     if (!decoded || decoded.action !== 'activate' || !decoded.id) {
-      return res.status(400).send('Token inválido');
+      const wantsJson = String(req.headers.accept || '').includes('application/json') || !!(req as any).xhr;
+      return wantsJson ? res.status(400).json({ success: false, message: 'Token inválido' }) : res.status(400).send('Token inválido');
     }
 
     const user = await User.findById(decoded.id);
     if (!user) return res.status(404).send('Usuario no encontrado');
 
+    const wantsJson = String(req.headers.accept || '').includes('application/json') || !!(req as any).xhr;
+
     if (user.isEnrolled) {
-      return res.redirect(`${FRONTEND_URL}/login?activated=1`);
+      return wantsJson ? res.json({ success: true, alreadyEnrolled: true }) : res.redirect(`${FRONTEND_URL}/login?activated=1`);
     }
 
     user.isEnrolled = true;
@@ -254,10 +257,11 @@ export const activateUser = async (req: Request, res: Response) => {
       console.error('Error sending post-activation email:', mailErr);
     }
 
-    return res.redirect(`${FRONTEND_URL}/login?activated=1`);
+    return wantsJson ? res.json({ success: true, message: 'Cuenta activada' }) : res.redirect(`${FRONTEND_URL}/login?activated=1`);
   } catch (err) {
     console.error('Error activating user:', err);
-    return res.status(500).send('Error activando usuario');
+    const wantsJson = String(req.headers.accept || '').includes('application/json') || !!(req as any).xhr;
+    return wantsJson ? res.status(500).json({ success: false, message: 'Error activando usuario' }) : res.status(500).send('Error activando usuario');
   }
 };
 
