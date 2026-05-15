@@ -29,6 +29,7 @@ import AdminIntake from './pages/AdminIntake';
 import UserEdit from './pages/UserEdit';
 import PublicUser from './pages/PublicUser';
 import Notifications from './pages/Notifications';
+import NotificationDetail from './pages/NotificationDetail';
 import Soporte from './pages/Soporte';
 import TicketDetail from './pages/TicketDetail';
 
@@ -321,6 +322,7 @@ export default function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="/profile" element={<Profile />} />
               <Route path="/notifications" element={<Notifications />} />
+              <Route path="/notifications/:id" element={<NotificationDetail />} />
               <Route path="/mis-envios" element={<MySubmissions />} />
               <Route path="/soporte" element={<Soporte />} />
               <Route path="/soporte/:id" element={<TicketDetail />} />

@@ -161,8 +161,7 @@ export default function Notifications() {
               {notifications.map((notification) => (
                 <Link
                   key={notification._id}
-                  to={getNotificationLink(notification)}
-                  onClick={() => handleMarkAsRead(notification._id)}
+                  to={`/notifications/${notification._id}`}
                   className={`block px-8 py-6 transition-colors hover:bg-gray-50 ${notification.readAt ? 'bg-white' : 'bg-brand-blue/[0.03]'}`}
                 >
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -178,7 +177,7 @@ export default function Notifications() {
                         {notification.post?.title && <span>{notification.post.title}</span>}
                       </div>
                     </div>
-                    <div className="text-sm font-bold text-brand-red">Ver detalle</div>
+                      <div className="text-sm font-bold text-brand-red">Ver detalle</div>
                   </div>
                 </Link>
               ))}

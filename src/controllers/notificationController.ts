@@ -48,3 +48,17 @@ export const markAllNotificationsAsRead = async (req: AuthRequest, res: Response
     res.status(500).json({ message: 'Error al actualizar las notificaciones' });
   }
 };
+
+export const getNotificationById = async (req: AuthRequest, res: Response) => {
+  try {
+    const notification = await Notification.findOne({ _id: req.params.id, user: req.user.id })
+      .populate('post', 'title slug status')
+      .populate('triggeredBy', 'name role');
+
+    if (!notification) return res.status(404).json({ message: 'Notificación no encontrada' });
+
+    res.json(notification);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener la notificación' });
+  }
+};

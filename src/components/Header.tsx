@@ -72,15 +72,7 @@ const Header = () => {
             </Link>
           ))}
           {loggedUser && (
-            <Link
-              to="/notifications"
-              className={`font-bold transition-colors hover:text-brand-red inline-flex items-center gap-2 ${
-                scrolled || !isHomePage ? 'text-brand-blue' : 'text-white'
-              }`}
-            >
-              <Bell size={18} />
-              <span>Notificaciones</span>
-            </Link>
+            null
           )}
           <Link 
             to={loggedUser ? '/profile' : '/login'} 
@@ -127,16 +119,7 @@ const Header = () => {
                   {link.name}
                 </Link>
               ))}
-              {loggedUser && (
-                <Link
-                  to="/notifications"
-                  className="text-brand-blue font-medium text-lg inline-flex items-center gap-2"
-                  onClick={() => setIsOpen(false)}
-                >
-                  <Bell size={18} />
-                  <span>Notificaciones</span>
-                </Link>
-              )}
+              {loggedUser && null}
               <Link 
                 to={loggedUser ? '/profile' : '/login'} 
                 className="bg-brand-blue text-white px-4 py-2 rounded-full font-bold text-center"

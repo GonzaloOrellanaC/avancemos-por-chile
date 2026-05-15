@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { User, FileText, Plus, LogOut, Edit, Trash2, Loader2, Layout, Bell, HelpCircle } from 'lucide-react';
+import { User, FileText, Plus, LogOut, Edit, Trash2, Loader2, Layout, Bell, HelpCircle, BarChart } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Post {
@@ -24,6 +24,7 @@ const Profile = () => {
   const [user, setUser] = useState<any>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [pages, setPages] = useState<Page[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -52,6 +53,20 @@ const Profile = () => {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (pagesRes.ok) setPages(await pagesRes.json());
+
+        // Fetch Notifications and count unread
+        try {
+          const notifRes = await fetchApi('/api/notifications', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (notifRes.ok) {
+            const notifs = await notifRes.json();
+            const unread = Array.isArray(notifs) ? notifs.filter((n: any) => !n.readAt).length : 0;
+            setUnreadCount(unread);
+          }
+        } catch (e) {
+          console.warn('Could not fetch notifications', e);
+        }
 
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -171,7 +186,12 @@ const Profile = () => {
                   </Link>
                   {/* moved quick actions to the main quick actions area */}
                   <Link to="/notifications" className="w-full flex items-center space-x-3 p-3 text-gray-600 hover:bg-gray-50 hover:text-brand-blue rounded-xl transition-all">
-                    <Bell size={20} />
+                    <span className="relative inline-flex">
+                      <Bell size={20} />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 h-2.5 w-2.5 bg-brand-red rounded-full ring-2 ring-white" />
+                      )}
+                    </span>
                     <span className="font-medium">Notificaciones</span>
                   </Link>
                   <button 
@@ -191,31 +211,31 @@ const Profile = () => {
             {/* Quick admin buttons */}
             <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
               <div className="flex justify-center">
-                <div className="flex gap-6 items-center">
+                <div className="grid w-full grid-cols-2 md:grid-cols-4 gap-6 items-center justify-items-center">
                   {user?.role === 'admin' && (
                     <>
-                      <Link to="/admin/dashboard" className="flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
+                      <Link to="/admin/dashboard" className="w-full flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
                         <div className="w-20 h-20 rounded-full bg-brand-blue/10 flex items-center justify-center mb-3">
-                          <Layout className="text-brand-blue" size={36} />
+                          <BarChart className="text-brand-blue" size={36} />
                         </div>
                         <div className="text-sm font-semibold">Dashboard</div>
                       </Link>
 
-                      <Link to="/admin/pages" className="flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
+                      <Link to="/admin/pages" className="w-full flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
                         <div className="w-20 h-20 rounded-full bg-brand-blue/10 flex items-center justify-center mb-3">
                           <Layout className="text-brand-blue" size={36} />
                         </div>
                         <div className="text-sm font-semibold">Páginas</div>
                       </Link>
 
-                      <Link to="/admin/users" className="flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
+                      <Link to="/admin/users" className="w-full flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
                         <div className="w-20 h-20 rounded-full bg-brand-blue/10 flex items-center justify-center mb-3">
                           <User className="text-brand-blue" size={36} />
                         </div>
                         <div className="text-sm font-semibold">Usuarios</div>
                       </Link>
 
-                      <Link to="/blog/manage" className="flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
+                      <Link to="/blog/manage" className="w-full flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
                         <div className="w-20 h-20 rounded-full bg-brand-blue/10 flex items-center justify-center mb-3">
                           <FileText className="text-brand-blue" size={36} />
                         </div>
@@ -225,7 +245,7 @@ const Profile = () => {
                   )}
 
                   {(user?.role === 'editor' || user?.role === 'columnista') && (
-                    <Link to="/blog/manage" className="flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
+                    <Link to="/blog/manage" className="w-full flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
                       <div className="w-20 h-20 rounded-full bg-brand-blue/10 flex items-center justify-center mb-3">
                         <FileText className="text-brand-blue" size={36} />
                       </div>
@@ -233,25 +253,28 @@ const Profile = () => {
                     </Link>
                   )}
 
-                  <Link to="/notifications" className="flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
-                    <div className="w-20 h-20 rounded-full bg-brand-blue/10 flex items-center justify-center mb-3">
+                  <Link to="/notifications" className="w-full flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
+                    <div className="relative w-20 h-20 rounded-full bg-brand-blue/10 flex items-center justify-center mb-3">
                       <Bell className="text-brand-blue" size={36} />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 h-3 w-3 bg-brand-red rounded-full ring-2 ring-white" />
+                      )}
                     </div>
                     <div className="text-sm font-semibold">Notificaciones</div>
                   </Link>
-                  <Link to="/soporte" className="flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
+                  <Link to="/soporte" className="w-full flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
                     <div className="w-20 h-20 rounded-full bg-brand-blue/10 flex items-center justify-center mb-3">
                       <HelpCircle className="text-brand-blue" size={36} />
                     </div>
                     <div className="text-sm font-semibold">Soporte técnico</div>
                   </Link>
-                  <Link to="/cargar-nuevo-proyecto" className="flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
+                  <Link to="/cargar-nuevo-proyecto" className="w-full flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
                     <div className="w-20 h-20 rounded-full bg-brand-blue/10 flex items-center justify-center mb-3">
                       <Plus className="text-brand-blue" size={36} />
                     </div>
                     <div className="text-sm font-semibold">Cargar nuevo proyecto</div>
                   </Link>
-                  <Link to="/mis-envios" className="flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
+                  <Link to="/mis-envios" className="w-full flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
                     <div className="w-20 h-20 rounded-full bg-brand-blue/10 flex items-center justify-center mb-3">
                       <FileText className="text-brand-blue" size={36} />
                     </div>
@@ -260,133 +283,6 @@ const Profile = () => {
                 </div>
               </div>
             </div>
-            {/* User creation (admin only) */}
-            {/* {user?.role === 'admin' && (
-              <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
-                <h2 className="text-xl font-bold text-brand-blue mb-4">Crear nuevo usuario</h2>
-                <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                  <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nombre" className="p-3 bg-gray-50 rounded-lg" />
-                  <input value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="Correo" className="p-3 bg-gray-50 rounded-lg" />
-                  <input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Contraseña" type="password" className="p-3 bg-gray-50 rounded-lg" />
-                  <div className="flex items-center space-x-2">
-                    <select value={newRole} onChange={(e) => setNewRole(e.target.value as any)} className="p-3 bg-gray-50 rounded-lg">
-                      <option value="editor">Editor</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                    <button disabled={isCreating} className="bg-brand-blue text-white px-4 py-2 rounded-lg font-bold">{isCreating ? 'Creando...' : 'Crear'}</button>
-                  </div>
-                </form>
-              </div>
-            )} */}
-            {/* Pages Management */}
-            {/* <div className="bg-white p-8 rounded-2xl shadow-md border border-gray-100">
-              <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold text-brand-blue flex items-center space-x-3">
-                  <Layout className="text-brand-red" size={32} />
-                  <span>Páginas del Sitio</span>
-                </h1>
-                <Link 
-                  to="/page-editor/new" 
-                  className="bg-brand-red text-white px-6 py-3 rounded-full font-bold flex items-center space-x-2 hover:bg-brand-blue transition-all shadow-lg"
-                >
-                  <Plus size={20} />
-                  <span>Nueva Página</span>
-                </Link>
-              </div>
-
-              {isLoading ? (
-                <div className="flex justify-center py-12"><Loader2 className="animate-spin text-brand-blue" size={32} /></div>
-              ) : pages.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="text-left border-b border-gray-100">
-                        <th className="pb-4 font-bold text-gray-400 uppercase text-xs tracking-wider">Título</th>
-                        <th className="pb-4 font-bold text-gray-400 uppercase text-xs tracking-wider">Slug</th>
-                        <th className="pb-4 font-bold text-gray-400 uppercase text-xs tracking-wider text-right">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {pages.map((page) => (
-                        <tr key={page._id} className="group">
-                          <td className="py-4 font-bold text-brand-blue">
-                            {page.title} {page.isHome && <span className="ml-2 text-[10px] bg-brand-blue text-white px-2 py-0.5 rounded-full">INICIO</span>}
-                          </td>
-                          <td className="py-4 text-sm text-gray-500">/{page.slug}</td>
-                          <td className="py-4 text-right">
-                            <div className="flex justify-end space-x-2">
-                              <Link to={`/page-editor/${page.slug}`} className="p-2 text-gray-400 hover:text-brand-blue hover:bg-brand-blue/5 rounded-lg transition-all"><Edit size={18} /></Link>
-                              {!page.isHome && <button onClick={() => handleDeletePage(page._id)} className="p-2 text-gray-400 hover:text-brand-red hover:bg-red-50 rounded-lg transition-all"><Trash2 size={18} /></button>}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                  <p className="text-gray-400 mb-4">No hay páginas dinámicas creadas.</p>
-                </div>
-              )}
-            </div> */}
-
-            {/* Posts Management */}
-            {/* <div className="bg-white p-8 rounded-2xl shadow-md border border-gray-100">
-              <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold text-brand-blue flex items-center space-x-3">
-                  <FileText className="text-brand-red" size={32} />
-                  <span>Entradas del Blog</span>
-                </h1>
-                <Link 
-                  to="/editor" 
-                  className="bg-brand-blue text-white px-6 py-3 rounded-full font-bold flex items-center space-x-2 hover:bg-brand-red transition-all shadow-lg"
-                >
-                  <Plus size={20} />
-                  <span>Nueva Entrada</span>
-                </Link>
-              </div>
-
-              {isLoading ? (
-                <div className="flex justify-center py-12"><Loader2 className="animate-spin text-brand-blue" size={32} /></div>
-              ) : posts.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="text-left border-b border-gray-100">
-                        <th className="pb-4 font-bold text-gray-400 uppercase text-xs tracking-wider">Título</th>
-                        <th className="pb-4 font-bold text-gray-400 uppercase text-xs tracking-wider">Estado</th>
-                        <th className="pb-4 font-bold text-gray-400 uppercase text-xs tracking-wider text-right">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {posts.map((post) => (
-                        <tr key={post._id} className="group">
-                          <td className="py-4 font-bold text-brand-blue">{post.title}</td>
-                          <td className="py-4">
-                            <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${
-                              post.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                            }`}>
-                              {post.status === 'published' ? 'Publicado' : 'Borrador'}
-                            </span>
-                          </td>
-                          <td className="py-4 text-right">
-                            <div className="flex justify-end space-x-2">
-                              <Link to={`/editor/${post._id}`} className="p-2 text-gray-400 hover:text-brand-blue hover:bg-brand-blue/5 rounded-lg transition-all"><Edit size={18} /></Link>
-                              <button onClick={() => handleDeletePost(post._id)} className="p-2 text-gray-400 hover:text-brand-red hover:bg-red-50 rounded-lg transition-all"><Trash2 size={18} /></button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                  <p className="text-gray-400 mb-4">No hay entradas en el blog.</p>
-                </div>
-              )}
-            </div> */}
           </div>
         </div>
       </div>
