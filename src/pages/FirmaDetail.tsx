@@ -27,6 +27,7 @@ const FirmaDetail = () => {
   const { slug } = useParams();
   const [petition, setPetition] = useState<Petition | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [bannerAspect, setBannerAspect] = useState<'2/1' | '1/1'>('2/1');
 
   const [user, setUser] = useState<any | null>(null);
   const [rut, setRut] = useState('');
@@ -91,6 +92,18 @@ const FirmaDetail = () => {
     };
     loadSession();
   }, [slug]);
+
+  // Detecta la proporción de la foto cargada para ajustarla: 2:1 o 1:1, nunca más alta que ancha.
+  useEffect(() => {
+    if (!petition?.bannerImage) return;
+    const img = new Image();
+    img.onload = () => {
+      const ratio = img.naturalWidth / img.naturalHeight;
+      setBannerAspect(ratio >= 1.8 ? '2/1' : '1/1');
+    };
+    img.onerror = () => setBannerAspect('2/1');
+    img.src = petition.bannerImage;
+  }, [petition?.bannerImage]);
 
   const handleRutBlur = () => {
     if (rut && isValidRut(rut)) {
@@ -241,17 +254,21 @@ const FirmaDetail = () => {
 
   return (
     <div className="min-h-screen pt-24 pb-24 bg-gray-50">
-      {/* Banner */}
-      <div className="relative h-[45vh] w-full overflow-hidden">
-        <img
-          src={petition.bannerImage || 'https://picsum.photos/seed/petition/1920/900'}
-          alt={petition.title}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-gray-50 via-black/20 to-transparent" />
+      {/* Banner: foto con opacidad y relieve */}
+      <div className="relative h-[100px] w-full overflow-hidden bg-brand-blue/5">
+        {petition.bannerImage ? (
+          <img
+            src={petition.bannerImage}
+            alt=""
+            className="w-full h-full object-cover opacity-25"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-r from-brand-blue/15 to-brand-red/10" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-gray-50 shadow-[inset_0_2px_10px_rgba(0,0,0,0.10),inset_0_-2px_10px_rgba(255,255,255,0.55)]" />
       </div>
 
-      <div className="container mx-auto px-4 -mt-24 relative z-10">
+      <div className="container mx-auto px-4 mt-8 relative z-10">
         <div className="max-w-5xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -269,7 +286,20 @@ const FirmaDetail = () => {
                   <PenLine size={14} />
                   <span>Iniciativa de firma</span>
                 </div>
-                <h1 className="mt-4 text-3xl md:text-5xl font-black text-brand-blue leading-tight">
+
+                {petition.bannerImage && (
+                  <div
+                    className={`mt-5 overflow-hidden rounded-xl border border-gray-100 shadow-md ${bannerAspect === '2/1' ? 'w-[200px] aspect-[2/1]' : 'w-[100px] aspect-square'}`}
+                  >
+                    <img
+                      src={petition.bannerImage}
+                      alt={petition.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+
+                <h1 className="mt-5 text-3xl md:text-5xl font-black text-brand-blue leading-tight">
                   {petition.title}
                 </h1>
               </div>
