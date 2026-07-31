@@ -14,7 +14,10 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "dev": "concurrently \"npm run dev-server\" \"npm run dev-client\""
+    "dev": "concurrently \"npm run dev-server\" \"npm run dev-client\"",
+    "deploy": "bash deploy.sh",
+    "update": "git pull && npm run build && pm2 restart avancemos-por-chile",
+    "logs": "pm2 logs avancemos-por-chile"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
