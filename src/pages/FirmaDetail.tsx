@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Loader2, PenLine, Target, CheckCircle2, FileText, Download, User, Mail, MapPin, Fingerprint, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, PenLine, Target, CheckCircle2, FileText, Download, User, Mail, MapPin, Fingerprint, AlertCircle, X } from 'lucide-react';
 import { isValidRut, formatRut } from '../lib/rut';
 
 interface ContentBlock {
@@ -28,6 +28,7 @@ const FirmaDetail = () => {
   const [petition, setPetition] = useState<Petition | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [bannerAspect, setBannerAspect] = useState<'2/1' | '1/1'>('2/1');
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const [user, setUser] = useState<any | null>(null);
   const [rut, setRut] = useState('');
@@ -281,22 +282,25 @@ const FirmaDetail = () => {
                 <span className="font-bold uppercase text-xs tracking-widest">Volver a firmas</span>
               </Link>
 
-              <div className="mb-8">
+              <div className="mb-8 text-center">
                 <div className="inline-flex items-center gap-2 rounded-full bg-brand-blue/10 px-4 py-1.5 text-xs font-black uppercase tracking-[0.2em] text-brand-blue">
                   <PenLine size={14} />
                   <span>Iniciativa de firma</span>
                 </div>
 
                 {petition.bannerImage && (
-                  <div
-                    className={`mt-5 overflow-hidden rounded-xl border border-gray-100 shadow-md ${bannerAspect === '2/1' ? 'w-[200px] aspect-[2/1]' : 'w-[100px] aspect-square'}`}
+                  <button
+                    type="button"
+                    onClick={() => setPreviewOpen(true)}
+                    className={`mx-auto mt-5 block overflow-hidden rounded-xl border border-gray-100 shadow-md transition-transform hover:scale-[1.02] focus:outline-none ${bannerAspect === '2/1' ? 'w-[600px] max-w-full aspect-[2/1]' : 'w-[300px] max-w-full aspect-square'}`}
+                    aria-label="Ver foto en grande"
                   >
                     <img
                       src={petition.bannerImage}
                       alt={petition.title}
                       className="w-full h-full object-cover"
                     />
-                  </div>
+                  </button>
                 )}
 
                 <h1 className="mt-5 text-3xl md:text-5xl font-black text-brand-blue leading-tight">
@@ -553,6 +557,34 @@ const FirmaDetail = () => {
           </motion.div>
         </div>
       </div>
+
+      {/* Vista previa casi full page */}
+      {previewOpen && petition.bannerImage && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setPreviewOpen(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setPreviewOpen(false)}
+            className="absolute right-5 top-5 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"
+            aria-label="Cerrar vista previa"
+          >
+            <X size={28} />
+          </button>
+          <motion.img
+            initial={{ scale: 0.95 }}
+            animate={{ scale: 1 }}
+            src={petition.bannerImage}
+            alt={petition.title}
+            className="max-h-[90vh] max-w-[92vw] rounded-2xl object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </motion.div>
+      )}
     </div>
   );
 };
