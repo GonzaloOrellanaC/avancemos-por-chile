@@ -176,6 +176,9 @@ export default function AdminDashboard() {
         <Link to="/admin/firmas" className="inline-flex items-center rounded-full bg-brand-blue px-5 py-2 text-sm font-bold text-white hover:bg-brand-red transition-all">
           Gestionar firmas
         </Link>
+        <Link to="/admin/firmas/editor" className="inline-flex items-center rounded-full bg-brand-red px-5 py-2 text-sm font-bold text-white hover:bg-brand-blue transition-all">
+          Nueva iniciativa
+        </Link>
       </div>
 
       <div className="space-y-8">

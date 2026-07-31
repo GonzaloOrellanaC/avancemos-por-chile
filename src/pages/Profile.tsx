@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { User, FileText, Plus, LogOut, Edit, Trash2, Loader2, Layout, Bell, HelpCircle, BarChart } from 'lucide-react';
+import { User, FileText, Plus, LogOut, Edit, Trash2, Loader2, Layout, Bell, HelpCircle, BarChart, PenLine } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Post {
@@ -240,6 +240,20 @@ const Profile = () => {
                           <FileText className="text-brand-blue" size={36} />
                         </div>
                         <div className="text-sm font-semibold">Blog</div>
+                      </Link>
+
+                      <Link to="/admin/firmas" className="w-full flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
+                        <div className="w-20 h-20 rounded-full bg-brand-blue/10 flex items-center justify-center mb-3">
+                          <PenLine className="text-brand-blue" size={36} />
+                        </div>
+                        <div className="text-sm font-semibold">Firmas</div>
+                      </Link>
+
+                      <Link to="/admin/firmas/editor" className="w-full flex flex-col items-center text-center p-4 hover:bg-gray-50 rounded-lg">
+                        <div className="w-20 h-20 rounded-full bg-brand-red/10 flex items-center justify-center mb-3">
+                          <Plus className="text-brand-red" size={36} />
+                        </div>
+                        <div className="text-sm font-semibold">Nueva iniciativa</div>
                       </Link>
                     </>
                   )}
