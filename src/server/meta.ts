@@ -192,6 +192,20 @@ function buildBlogSeoAppHtml(post: any, description: string, relatedPosts: Array
   </article></div>`;
 }
 
+function buildFirmasSeoAppHtml() {
+  const title = 'Firmas de Iniciativas';
+  const description = 'Apoya las iniciativas que impulsamos. Suma tu firma a los proyectos que crees que merecen avanzar por Chile.';
+
+  return `<div id="root"><main data-seo-preview="firmas" style="max-width:960px;margin:0 auto;padding:40px 20px 60px;color:#16324f;font-family:Georgia, 'Times New Roman', serif;line-height:1.6;">
+    <nav aria-label="Migas de pan" style="font-family:Arial, sans-serif;font-size:14px;margin-bottom:20px;"><a href="/">Inicio</a> / <span>Firmas</span></nav>
+    <p style="font-family:Arial, sans-serif;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#c22a2a;margin:0 0 12px;">Participación ciudadana</p>
+    <h1 style="font-size:clamp(2rem,4vw,3rem);line-height:1.15;margin:0 0 16px;">${title}</h1>
+    <p style="font-family:Arial, sans-serif;font-size:16px;color:#4b5563;margin:0 0 20px;">${description}</p>
+    <p style="font-family:Arial, sans-serif;font-size:15px;color:#374151;">Cada persona firma una sola vez con su RUT. Conoce las iniciativas abiertas y el estado de sus firmas, y apoya las que creas que merecen avanzar por Chile.</p>
+    <p style="font-family:Arial, sans-serif;margin-top:24px;"><a href="/firmas" style="display:inline-block;background:#073557;color:#ffffff;padding:12px 26px;border-radius:999px;text-decoration:none;font-weight:700;">Ver iniciativas para firmar</a></p>
+  </main></div>`;
+}
+
 function buildMetaBlock(meta: MetaPayload) {
   const title = escapeHtml(meta.title);
   const description = escapeHtml(meta.description);
@@ -247,6 +261,29 @@ async function getRenderPayloadForRequest(requestPath: string): Promise<RenderPa
     meta: defaultMeta,
     appHtml: buildDefaultAppHtml(),
   };
+
+  const firmasMatch = requestPath.match(/^\/firmas\/?$/);
+  if (firmasMatch) {
+    const firmasTitle = 'Firmas de Iniciativas | Avancemos Por Chile';
+    const firmasDescription = 'Apoya las iniciativas que impulsamos. Suma tu firma a los proyectos que crees que merecen avanzar por Chile.';
+
+    console.info('[meta] Resolving firmas list metadata', {
+      requestPath,
+    });
+
+    return {
+      meta: {
+        title: firmasTitle,
+        description: firmasDescription,
+        canonicalUrl: toCanonicalUrl('/firmas'),
+        imageUrl: DEFAULT_IMAGE,
+        twitterImageUrl: DEFAULT_IMAGE,
+        imageAlt: 'Firmas de Iniciativas — Avancemos Por Chile',
+        ogType: 'website',
+      },
+      appHtml: buildFirmasSeoAppHtml(),
+    };
+  }
 
   const firmaMatch = requestPath.match(/^\/firma\/([^/]+)\/?$/);
   if (firmaMatch) {
