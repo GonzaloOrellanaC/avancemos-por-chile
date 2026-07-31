@@ -351,7 +351,7 @@ const FirmaDetail = () => {
               )}
 
               <div className="space-y-8">
-                {petition.content.map((block, index) => (
+                {(petition.content || []).map((block, index) => (
                   <div key={index}>
                     {block.type === 'paragraph' && (
                       <p className="text-base text-gray-700 leading-relaxed whitespace-pre-wrap">{block.value}</p>
