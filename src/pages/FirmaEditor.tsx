@@ -16,6 +16,7 @@ import {
   Target,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getYouTubeEmbedUrl, getTikTokEmbedUrl } from '../lib/mediaEmbed';
 
 interface ContentBlock {
   id: string;
@@ -31,6 +32,8 @@ interface LoadedPetition {
   title: string;
   summary?: string;
   bannerImage?: string;
+  youtubeUrl?: string;
+  tiktokUrl?: string;
   goal: number;
   status: PetitionStatus;
   content: Array<{ type: 'paragraph' | 'image' | 'pdf'; value: string; caption?: string }>;
@@ -51,6 +54,8 @@ const FirmaEditor = () => {
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
   const [bannerImage, setBannerImage] = useState('');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [tiktokUrl, setTiktokUrl] = useState('');
   const [goal, setGoal] = useState('');
   const [status, setStatus] = useState<PetitionStatus>('draft');
   const [blocks, setBlocks] = useState<ContentBlock[]>([]);
@@ -80,6 +85,8 @@ const FirmaEditor = () => {
         setTitle(data.title || '');
         setSummary(data.summary || '');
         setBannerImage(data.bannerImage || '');
+        setYoutubeUrl(data.youtubeUrl || '');
+        setTiktokUrl(data.tiktokUrl || '');
         setGoal(data.goal > 0 ? String(data.goal) : '');
         setStatus(data.status || 'draft');
         setBlocks(
@@ -176,6 +183,8 @@ const FirmaEditor = () => {
           title,
           summary,
           bannerImage,
+          youtubeUrl,
+          tiktokUrl,
           goal: goal ? Number(goal) : 0,
           status,
           content: blocks.map(({ type, value, caption }) => ({ type, value, caption })),
@@ -195,6 +204,9 @@ const FirmaEditor = () => {
       setIsSaving(false);
     }
   };
+
+  const youtubeEmbed = getYouTubeEmbedUrl(youtubeUrl);
+  const tiktokEmbed = getTikTokEmbedUrl(tiktokUrl);
 
   if (isLoading) {
     return (
@@ -303,6 +315,52 @@ const FirmaEditor = () => {
                 Subir
                 <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, undefined, true)} />
               </label>
+            </div>
+          </div>
+
+          {/* Redes y video */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-bold text-slate-600">Link de YouTube (opcional)</label>
+              <input
+                value={youtubeUrl}
+                onChange={(e) => setYoutubeUrl(e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=..."
+                className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
+              />
+              <p className="mt-1 text-xs text-gray-400">Se mostrará arriba del formulario de firma.</p>
+              {youtubeEmbed && (
+                <div className="mt-2 overflow-hidden rounded-xl border border-gray-100">
+                  <iframe
+                    src={youtubeEmbed}
+                    title="Vista previa de YouTube"
+                    className="aspect-video w-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-bold text-slate-600">Link de TikTok (opcional)</label>
+              <input
+                value={tiktokUrl}
+                onChange={(e) => setTiktokUrl(e.target.value)}
+                placeholder="https://www.tiktok.com/@usuario/video/..."
+                className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
+              />
+              <p className="mt-1 text-xs text-gray-400">Se mostrará al costado del formulario en PC/Tablet y arriba en celular.</p>
+              {tiktokEmbed && (
+                <div className="mt-2 w-40 overflow-hidden rounded-xl border border-gray-100">
+                  <iframe
+                    src={tiktokEmbed}
+                    title="Vista previa de TikTok"
+                    className="aspect-[9/16] w-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              )}
             </div>
           </div>
 

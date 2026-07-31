@@ -19,6 +19,9 @@ const petitionSchema = new mongoose.Schema({
   slug: { type: String, required: true, unique: true, trim: true, lowercase: true, index: true },
   summary: { type: String, trim: true },
   bannerImage: { type: String },
+  // Enlaces de video para mostrar junto a la iniciativa.
+  youtubeUrl: { type: String, trim: true },
+  tiktokUrl: { type: String, trim: true },
   // Meta de firmas objetivo (0 = sin meta definida).
   goal: { type: Number, default: 0, min: 0 },
   status: { type: String, enum: ['draft', 'published', 'closed'], default: 'draft' },

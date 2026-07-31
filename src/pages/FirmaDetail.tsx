@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Loader2, PenLine, Target, CheckCircle2, FileText, Download, User, Mail, MapPin, Fingerprint, AlertCircle, X } from 'lucide-react';
+import { ArrowLeft, Loader2, PenLine, Target, CheckCircle2, FileText, Download, User, Mail, MapPin, Fingerprint, AlertCircle, X, Youtube, Music2 } from 'lucide-react';
 import { isValidRut, formatRut } from '../lib/rut';
+import { getYouTubeEmbedUrl, getTikTokEmbedUrl } from '../lib/mediaEmbed';
 
 interface ContentBlock {
   type: 'paragraph' | 'image' | 'pdf';
@@ -15,6 +16,8 @@ interface Petition {
   title: string;
   summary?: string;
   bannerImage?: string;
+  youtubeUrl?: string;
+  tiktokUrl?: string;
   content: ContentBlock[];
   goal: number;
   signatureCount: number;
@@ -252,6 +255,8 @@ const FirmaDetail = () => {
   }
 
   const progress = petition.goal > 0 ? Math.min(100, Math.round((petition.signatureCount / petition.goal) * 100)) : 0;
+  const youtubeEmbedUrl = getYouTubeEmbedUrl(petition.youtubeUrl);
+  const tiktokEmbedUrl = getTikTokEmbedUrl(petition.tiktokUrl);
 
   return (
     <div className="min-h-screen pt-24 pb-24 bg-gray-50">
@@ -386,13 +391,37 @@ const FirmaDetail = () => {
             </div>
           </motion.div>
 
-          {/* Formulario de firma */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-8 bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden"
-          >
-            <div className="p-8 md:p-12">
+          {/* Video de YouTube (arriba del formulario) */}
+          {youtubeEmbedUrl && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-8 overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-2xl"
+            >
+              <div className="p-4">
+                <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-brand-blue/10 px-3 py-1 text-xs font-black uppercase tracking-[0.2em] text-brand-blue">
+                  <Youtube size={14} />
+                  <span>Video de YouTube</span>
+                </div>
+                <iframe
+                  src={youtubeEmbedUrl}
+                  title="Video de YouTube"
+                  className="aspect-video w-full rounded-2xl"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+            </motion.div>
+          )}
+
+          {/* Formulario de firma + TikTok */}
+          <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[1fr_auto] lg:items-start">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="order-2 lg:order-1 bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden"
+            >
+              <div className="p-8 md:p-12">
               <div className="mb-6">
                 <div className="inline-flex items-center gap-2 rounded-full bg-brand-blue/10 px-3 py-1 text-xs font-black uppercase tracking-[0.2em] text-brand-blue">
                   <Fingerprint size={14} />
@@ -554,7 +583,30 @@ const FirmaDetail = () => {
                 </div>
               </form>
             </div>
-          </motion.div>
+            </motion.div>
+
+            {tiktokEmbedUrl && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="order-1 lg:order-2 w-full lg:w-[340px] bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden"
+              >
+                <div className="p-4">
+                  <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-black/5 px-3 py-1 text-xs font-black uppercase tracking-[0.2em] text-slate-600">
+                    <Music2 size={14} />
+                    <span>TikTok</span>
+                  </div>
+                  <iframe
+                    src={tiktokEmbedUrl}
+                    title="Video de TikTok"
+                    className="aspect-[9/16] w-full rounded-2xl"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                </div>
+              </motion.div>
+            )}
+          </div>
         </div>
       </div>
 

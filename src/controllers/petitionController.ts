@@ -4,6 +4,7 @@ import { User } from '../models/User.ts';
 import type { AuthRequest } from '../middleware/auth.ts';
 import { toSlug } from '../lib/slugify.ts';
 import { normalizeRut, isValidRut } from '../lib/rut.ts';
+import { isValidHttpUrl } from '../lib/mediaEmbed.ts';
 
 const VALID_STATUSES = new Set(['draft', 'published', 'closed']);
 
@@ -272,10 +273,16 @@ export const createPetition = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: 'No autorizado' });
     }
 
-    const { title, summary, bannerImage, goal, status, content } = req.body || {};
+    const { title, summary, bannerImage, goal, status, content, youtubeUrl, tiktokUrl } = req.body || {};
     const trimmedTitle = typeof title === 'string' ? title.trim() : '';
     if (!trimmedTitle) {
       return res.status(400).json({ message: 'Debes indicar el título de la iniciativa' });
+    }
+    if (!isValidHttpUrl(youtubeUrl)) {
+      return res.status(400).json({ message: 'La URL de YouTube no es válida' });
+    }
+    if (!isValidHttpUrl(tiktokUrl)) {
+      return res.status(400).json({ message: 'La URL de TikTok no es válida' });
     }
 
     const baseSlug = toSlug(trimmedTitle) || 'iniciativa';
@@ -286,6 +293,8 @@ export const createPetition = async (req: AuthRequest, res: Response) => {
       slug,
       summary: typeof summary === 'string' ? summary.trim() : '',
       bannerImage: typeof bannerImage === 'string' ? bannerImage.trim() : '',
+      youtubeUrl: typeof youtubeUrl === 'string' ? youtubeUrl.trim() : '',
+      tiktokUrl: typeof tiktokUrl === 'string' ? tiktokUrl.trim() : '',
       goal: isNumber(goal) ? Math.floor(goal) : 0,
       status: VALID_STATUSES.has(status) ? status : 'draft',
       content: sanitizeBlocks(content),
@@ -312,7 +321,7 @@ export const updatePetition = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Iniciativa no encontrada' });
     }
 
-    const { title, summary, bannerImage, goal, status, content } = req.body || {};
+    const { title, summary, bannerImage, goal, status, content, youtubeUrl, tiktokUrl } = req.body || {};
 
     if (typeof title === 'string' && title.trim()) {
       const nextTitle = title.trim();
@@ -327,6 +336,18 @@ export const updatePetition = async (req: AuthRequest, res: Response) => {
     }
     if (typeof bannerImage === 'string') {
       petition.bannerImage = bannerImage.trim();
+    }
+    if (typeof youtubeUrl === 'string') {
+      if (!isValidHttpUrl(youtubeUrl)) {
+        return res.status(400).json({ message: 'La URL de YouTube no es válida' });
+      }
+      petition.youtubeUrl = youtubeUrl.trim();
+    }
+    if (typeof tiktokUrl === 'string') {
+      if (!isValidHttpUrl(tiktokUrl)) {
+        return res.status(400).json({ message: 'La URL de TikTok no es válida' });
+      }
+      petition.tiktokUrl = tiktokUrl.trim();
     }
     if (isNumber(goal)) {
       petition.goal = Math.floor(goal);
