@@ -102,7 +102,7 @@ export const getPublishedPetitions = async (req: AuthRequest, res: Response) => 
 export const getPublishedPetitionBySlug = async (req: AuthRequest, res: Response) => {
   try {
     const petition = await Petition.findOne({ slug: req.params.slug, status: 'published' })
-      .select('-signatures -signatureEmails -signatureRuts')
+      .select('title slug summary bannerImage youtubeUrl tiktokUrl goal signatureCount status createdAt author')
       .populate('author', 'name');
 
     if (!petition) {

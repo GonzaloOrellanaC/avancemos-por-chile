@@ -392,7 +392,7 @@ const FirmaDetail = () => {
           </motion.div>
 
           {/* Video de YouTube (arriba del formulario) */}
-          {youtubeEmbedUrl && (
+          {petition.youtubeUrl && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -403,13 +403,25 @@ const FirmaDetail = () => {
                   <Youtube size={14} />
                   <span>Video de YouTube</span>
                 </div>
-                <iframe
-                  src={youtubeEmbedUrl}
-                  title="Video de YouTube"
-                  className="aspect-video w-full rounded-2xl"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
+                {youtubeEmbedUrl ? (
+                  <iframe
+                    src={youtubeEmbedUrl}
+                    title="Video de YouTube"
+                    className="aspect-video w-full rounded-2xl"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                ) : (
+                  <a
+                    href={petition.youtubeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 rounded-2xl bg-brand-red px-6 py-4 font-bold text-white hover:bg-brand-blue transition-colors"
+                  >
+                    <Youtube size={20} />
+                    Ver video en YouTube
+                  </a>
+                )}
               </div>
             </motion.div>
           )}
@@ -585,7 +597,7 @@ const FirmaDetail = () => {
             </div>
             </motion.div>
 
-            {tiktokEmbedUrl && (
+            {petition.tiktokUrl && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -596,13 +608,25 @@ const FirmaDetail = () => {
                     <Music2 size={14} />
                     <span>TikTok</span>
                   </div>
-                  <iframe
-                    src={tiktokEmbedUrl}
-                    title="Video de TikTok"
-                    className="aspect-[9/16] w-full rounded-2xl"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
+                  {tiktokEmbedUrl ? (
+                    <iframe
+                      src={tiktokEmbedUrl}
+                      title="Video de TikTok"
+                      className="aspect-[9/16] w-full rounded-2xl"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <a
+                      href={petition.tiktokUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 rounded-2xl bg-black px-6 py-4 font-bold text-white hover:bg-brand-blue transition-colors"
+                    >
+                      <Music2 size={20} />
+                      Ver video en TikTok
+                    </a>
+                  )}
                 </div>
               </motion.div>
             )}
