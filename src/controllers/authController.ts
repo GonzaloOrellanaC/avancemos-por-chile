@@ -5,31 +5,7 @@ import crypto from 'crypto';
 import type { AuthRequest } from '../middleware/auth.ts';
 import { renderHtmlTemplate } from '../lib/emailTemplates.ts';
 import { createMailTransport, getMailFromAddress } from '../lib/mail.ts';
-
-function isValidRut(raw: string | undefined) {
-  if (!raw) return false;
-  const rut = String(raw).replace(/\./g, '').replace(/-/g, '').toUpperCase().trim();
-  if (rut.length < 2) return false;
-  const body = rut.slice(0, -1);
-  const dv = rut.slice(-1);
-  if (!/^[0-9]+$/.test(body)) return false;
-
-  let sum = 0;
-  let multiplier = 2;
-  for (let i = body.length - 1; i >= 0; i--) {
-    sum += parseInt(body.charAt(i), 10) * multiplier;
-    multiplier = multiplier < 7 ? multiplier + 1 : 2;
-  }
-
-  const remainder = sum % 11;
-  const checkDigit = 11 - remainder;
-  let expected = '';
-  if (checkDigit === 11) expected = '0';
-  else if (checkDigit === 10) expected = 'K';
-  else expected = String(checkDigit);
-
-  return expected === dv;
-}
+import { isValidRut, normalizeRut } from '../lib/rut.ts';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_here';
 const ALLOWED_USER_ROLES = new Set(['admin', 'editor', 'columnista', 'project_admin', 'usuario']);
@@ -176,7 +152,18 @@ export const login = async (req: Request, res: Response) => {
     }
 
     const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '1d' });
-    res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role, isEnrolled: !!user.isEnrolled } });
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isEnrolled: !!user.isEnrolled,
+        rut: user.documentId || '',
+        hasRut: !!user.documentId,
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: 'Error en el servidor' });
   }
@@ -326,7 +313,7 @@ export const validateToken = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'Token inválido' });
     }
 
-    const user = await User.findById(userId).select('_id name email role isEnrolled');
+    const user = await User.findById(userId).select('_id name email role isEnrolled documentId');
     if (!user) {
       return res.status(401).json({ message: 'La sesión ya no es válida' });
     }
@@ -339,10 +326,40 @@ export const validateToken = async (req: AuthRequest, res: Response) => {
         email: user.email,
         role: user.role,
         isEnrolled: !!user.isEnrolled,
+        rut: user.documentId || '',
+        hasRut: !!user.documentId,
       },
     });
   } catch (error) {
     res.status(500).json({ message: 'Error al validar la sesión' });
+  }
+};
+
+// Actualiza el RUT del propio usuario (autenticado). Usado para firmas oficiales.
+export const updateMyRut = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: 'No autorizado' });
+    }
+
+    const rawRut = req.body?.rut;
+    const normalized = normalizeRut(rawRut);
+    if (!normalized || !isValidRut(normalized)) {
+      return res.status(400).json({ message: 'RUT inválido' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    user.documentId = normalized;
+    await user.save();
+
+    res.json({ message: 'RUT actualizado correctamente', rut: normalized });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al actualizar el RUT' });
   }
 };
 

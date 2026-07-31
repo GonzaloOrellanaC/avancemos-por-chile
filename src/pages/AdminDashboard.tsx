@@ -173,6 +173,9 @@ export default function AdminDashboard() {
         <Link to="/blog/manage" className="inline-flex items-center rounded-full bg-brand-blue px-5 py-2 text-sm font-bold text-white hover:bg-brand-red transition-all">
           Ir a gestión del blog
         </Link>
+        <Link to="/admin/firmas" className="inline-flex items-center rounded-full bg-brand-blue px-5 py-2 text-sm font-bold text-white hover:bg-brand-red transition-all">
+          Gestionar firmas
+        </Link>
       </div>
 
       <div className="space-y-8">

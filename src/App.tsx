@@ -26,6 +26,12 @@ import AdminUsers from './pages/AdminUsers';
 import AdminBlog from './pages/AdminBlog';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminIntake from './pages/AdminIntake';
+import AdminFirmas from './pages/AdminFirmas';
+import AdminFirmaDetail from './pages/AdminFirmaDetail';
+import FirmaEditor from './pages/FirmaEditor';
+import Firmas from './pages/Firmas';
+import FirmaDetail from './pages/FirmaDetail';
+import FirmasData from './pages/FirmasData';
 import UserEdit from './pages/UserEdit';
 import PublicUser from './pages/PublicUser';
 import Notifications from './pages/Notifications';
@@ -310,6 +316,9 @@ export default function App() {
             <Route path="/p/:slug" element={<DynamicPage />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:slug" element={<PostDetail />} />
+            <Route path="/firmas" element={<Firmas />} />
+            <Route path="/firmas/datos" element={<FirmasData />} />
+            <Route path="/firma/:slug" element={<FirmaDetail />} />
             <Route path="/contacto" element={<Contact />} />
             <Route path="/login" element={<Login />} />
             <Route path="/activate" element={<Activate />} />
@@ -336,6 +345,10 @@ export default function App() {
                 <Route path="/admin/pages" element={<AdminPages />} />
                 <Route path="/admin/users" element={<AdminUsers />} />
                 <Route path="/admin/blog" element={<AdminBlog />} />
+                <Route path="/admin/firmas" element={<AdminFirmas />} />
+                <Route path="/admin/firmas/:id" element={<AdminFirmaDetail />} />
+                <Route path="/admin/firmas/editor" element={<FirmaEditor />} />
+                <Route path="/admin/firmas/editor/:id" element={<FirmaEditor />} />
                 <Route path="/page-editor/:slug" element={<PageEditor />} />
               </Route>
               {/* Admin intake: accessible to admin and project_admin via ProtectedRoute */}

@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { Post } from '../models/Post.ts';
+import { Petition } from '../models/Petition.ts';
 
 export const SITE_ORIGIN = 'https://www.avancemosporchile.cl';
 
@@ -246,6 +247,48 @@ async function getRenderPayloadForRequest(requestPath: string): Promise<RenderPa
     meta: defaultMeta,
     appHtml: buildDefaultAppHtml(),
   };
+
+  const firmaMatch = requestPath.match(/^\/firma\/([^/]+)\/?$/);
+  if (firmaMatch) {
+    const slug = decodeURIComponent(firmaMatch[1]);
+    console.info('[meta] Resolving firma metadata', {
+      requestPath,
+      slug,
+    });
+
+    const petition = await Petition.findOne({ slug, status: 'published' }).populate('author', 'name');
+    if (!petition) {
+      console.warn('[meta] Published petition not found for metadata', {
+        requestPath,
+        slug,
+      });
+      return defaultPayload;
+    }
+
+    const resolvedImageUrl = toAbsoluteAssetUrl(petition.bannerImage);
+    const descriptionSource = normalizeText(petition.summary) || getPostDescription(petition.content as ContentBlock[]);
+    const description = truncateText(descriptionSource, 200);
+
+    console.info('[meta] Firma metadata resolved', {
+      slug,
+      petitionId: String(petition._id),
+      title: petition.title,
+      resolvedImageUrl,
+    });
+
+    return {
+      meta: {
+        title: `${petition.title} | Firmas | Avancemos Por Chile`,
+        description,
+        canonicalUrl: toCanonicalUrl(`/firma/${petition.slug}`),
+        imageUrl: resolvedImageUrl,
+        twitterImageUrl: resolvedImageUrl,
+        imageAlt: petition.title,
+        ogType: 'website',
+      },
+      appHtml: buildDefaultAppHtml(),
+    };
+  }
 
   const blogMatch = requestPath.match(/^\/blog\/([^/]+)\/?$/);
   if (!blogMatch) {

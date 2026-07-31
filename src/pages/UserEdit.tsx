@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { isValidRut, formatRut, normalizeRut } from '../lib/rut';
 
 // Nota: Este perfil es el que se mostrará en la página pública del editor ("Columnista").
 
@@ -15,6 +16,8 @@ export default function UserEdit() {
   const [isPublicProfile, setIsPublicProfile] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [rut, setRut] = useState('');
+  const [originalRut, setOriginalRut] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -36,6 +39,9 @@ export default function UserEdit() {
           setIsPublicProfile(!!data.isPublicProfile);
           setName(data.name || '');
           setEmail(data.email || '');
+          const loadedRut = data.documentId || data.rut || '';
+          setOriginalRut(normalizeRut(loadedRut));
+          setRut(loadedRut ? formatRut(loadedRut) : '');
         }
       } catch (err) {
         console.error(err);
@@ -80,6 +86,28 @@ export default function UserEdit() {
         return;
       }
       const { default: fetchApi } = await import('../lib/api');
+
+      // RUT: validar y actualizar vía endpoint self-service si cambió.
+      const normalizedRut = rut.trim() ? normalizeRut(rut) : '';
+      if (rut.trim() && !isValidRut(rut)) {
+        toast.error('RUT inválido. Verifica el dígito verificador.');
+        setSaving(false);
+        return;
+      }
+      if (normalizedRut && normalizedRut !== originalRut) {
+        const rutRes = await fetchApi('/api/auth/me/rut', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ rut }),
+        });
+        if (!rutRes.ok) {
+          const rutErr = await rutRes.json().catch(() => ({}));
+          toast.error(rutErr.message || 'Error al actualizar el RUT');
+          setSaving(false);
+          return;
+        }
+      }
+
       const res = await fetchApi(`/api/auth/users/${me.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -98,7 +126,14 @@ export default function UserEdit() {
         const updated = await res.json();
         // update localStorage user summary
         try {
-          const newUser = { id: updated._id || updated.id || me.id, name: updated.name, email: updated.email, role: updated.role };
+          const newUser = {
+            id: updated._id || updated.id || me.id,
+            name: updated.name,
+            email: updated.email,
+            role: updated.role,
+            rut: normalizedRut || me.rut || '',
+            hasRut: !!(normalizedRut || me.rut),
+          };
           localStorage.setItem('user', JSON.stringify(newUser));
           // notify same-tab listeners
           window.dispatchEvent(new Event('user-updated'));
@@ -139,6 +174,16 @@ export default function UserEdit() {
 
           <label className="block text-sm font-medium text-gray-700 mb-2">Correo electrónico</label>
           <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-gray-50 border border-gray-100 rounded-lg px-4 py-2 mb-4" placeholder="tu@correo.cl" />
+
+          <label className="block text-sm font-medium text-gray-700 mb-2">RUT (para firmas oficiales)</label>
+          <input
+            value={rut}
+            onChange={(e) => setRut(e.target.value)}
+            onBlur={() => { if (rut && isValidRut(rut)) setRut(formatRut(rut)); }}
+            className="w-full bg-gray-50 border border-gray-100 rounded-lg px-4 py-2 mb-1"
+            placeholder="Ej: 12.345.678-9"
+          />
+          <p className="text-xs text-gray-400 mb-4">Este RUT se usa para firmar iniciativas oficiales. Debe coincidir con tu documento.</p>
 
           <label className="block text-sm font-medium text-gray-700 mb-2">Descripción corta</label>
           <input value={shortDescription} onChange={(e) => setShortDescription(e.target.value)} className="w-full bg-gray-50 border border-gray-100 rounded-lg px-4 py-2 mb-4" placeholder="Una línea para describirte" />
