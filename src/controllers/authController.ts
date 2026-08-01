@@ -413,7 +413,10 @@ export const getUserById = async (req: AuthRequest, res: Response) => {
     if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
 
     if (user.isPublicProfile) {
-      return res.json(user);
+      const safe = user.toObject();
+      // RUT (documentId) es dato sensible: no se expone en perfiles públicos.
+      delete (safe as any).documentId;
+      return res.json(safe);
     }
 
     // Not public -> require auth and owner/admin

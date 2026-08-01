@@ -13,8 +13,11 @@ export const getNewTicketId = async (_req: AuthRequest, res: Response) => {
 
 export const createTicket = async (req: AuthRequest, res: Response) => {
   try {
-    const { ticketId, title, description, files, submitterId: bodySubmitterId } = req.body;
-    const submitterId = bodySubmitterId || req.user?.id;
+    const { ticketId, title, description, files } = req.body;
+    // Seguridad: el ticket siempre se atribuye al usuario autenticado.
+    // Solo un admin puede indicar otro submitterId explícitamente.
+    const isAdmin = req.user?.role === 'admin';
+    const submitterId = (isAdmin && req.body?.submitterId) || req.user?.id;
     const submitterUser = submitterId ? await User.findById(submitterId).select('email') : null;
 
     const ticket = new Ticket({ ticketId, title, description, files: files || [], submitter: submitterId, submitterEmail: submitterUser?.email });
@@ -101,6 +104,14 @@ export const replyTicket = async (req: AuthRequest, res: Response) => {
   try {
     const ticket = await Ticket.findOne({ ticketId: req.params.id });
     if (!ticket) return res.status(404).json({ message: 'Ticket no encontrado' });
+
+    // Seguridad: solo el dueño del ticket o un admin pueden responder.
+    const submitterId = ticket.submitter && (ticket.submitter as any)._id
+      ? String((ticket.submitter as any)._id)
+      : String(ticket.submitter || '');
+    if (req.user.role !== 'admin' && submitterId !== String(req.user.id)) {
+      return res.status(403).json({ message: 'No autorizado' });
+    }
 
     const { body, files } = req.body;
     ticket.replies.push({ author: req.user.id, body, files: files || [] });
