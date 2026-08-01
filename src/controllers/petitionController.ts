@@ -5,6 +5,7 @@ import type { AuthRequest } from '../middleware/auth.ts';
 import { toSlug } from '../lib/slugify.ts';
 import { normalizeRut, isValidRut } from '../lib/rut.ts';
 import { isValidHttpUrl } from '../lib/mediaEmbed.ts';
+import { generateShareImagesForBanner } from '../lib/shareImages.ts';
 
 const VALID_STATUSES = new Set(['draft', 'published', 'closed']);
 
@@ -102,7 +103,7 @@ export const getPublishedPetitions = async (req: AuthRequest, res: Response) => 
 export const getPublishedPetitionBySlug = async (req: AuthRequest, res: Response) => {
   try {
     const petition = await Petition.findOne({ slug: req.params.slug, status: 'published' })
-      .select('title slug summary bannerImage youtubeUrl tiktokUrl content goal signatureCount status createdAt author')
+      .select('title slug summary bannerImage bannerImageToShare bannerImageToShareX youtubeUrl tiktokUrl content goal signatureCount status createdAt author')
       .populate('author', 'name');
 
     if (!petition) {
@@ -267,6 +268,19 @@ export const getPetitionSignatures = async (req: AuthRequest, res: Response) => 
   }
 };
 
+async function safeGenerateShareImages(slug: string, bannerImage?: string | null) {
+  try {
+    return await generateShareImagesForBanner(slug, bannerImage);
+  } catch (error) {
+    console.warn('[petitions] No se pudieron generar imágenes para compartir', {
+      slug,
+      bannerImage,
+      error,
+    });
+    return {};
+  }
+}
+
 export const createPetition = async (req: AuthRequest, res: Response) => {
   try {
     if (!isAdmin(req.user?.role)) {
@@ -288,11 +302,16 @@ export const createPetition = async (req: AuthRequest, res: Response) => {
     const baseSlug = toSlug(trimmedTitle) || 'iniciativa';
     const slug = await resolveUniqueSlug(baseSlug);
 
+    const nextBannerImage = typeof bannerImage === 'string' ? bannerImage.trim() : '';
+    const shareImages = nextBannerImage ? await safeGenerateShareImages(slug, nextBannerImage) : {};
+
     const petition = new Petition({
       title: trimmedTitle,
       slug,
       summary: typeof summary === 'string' ? summary.trim() : '',
-      bannerImage: typeof bannerImage === 'string' ? bannerImage.trim() : '',
+      bannerImage: nextBannerImage,
+      bannerImageToShare: (shareImages as any).bannerImageToShare,
+      bannerImageToShareX: (shareImages as any).bannerImageToShareX,
       youtubeUrl: typeof youtubeUrl === 'string' ? youtubeUrl.trim() : '',
       tiktokUrl: typeof tiktokUrl === 'string' ? tiktokUrl.trim() : '',
       goal: isNumber(goal) ? Math.floor(goal) : 0,
@@ -335,7 +354,18 @@ export const updatePetition = async (req: AuthRequest, res: Response) => {
       petition.summary = summary.trim();
     }
     if (typeof bannerImage === 'string') {
-      petition.bannerImage = bannerImage.trim();
+      const nextBannerImage = bannerImage.trim();
+      const shouldRegenerate = nextBannerImage && (nextBannerImage !== petition.bannerImage || !petition.bannerImageToShare);
+      petition.bannerImage = nextBannerImage;
+      if (shouldRegenerate) {
+        const shareImages = await safeGenerateShareImages(petition.slug, nextBannerImage);
+        if ((shareImages as any).bannerImageToShare) {
+          petition.bannerImageToShare = (shareImages as any).bannerImageToShare;
+        }
+        if ((shareImages as any).bannerImageToShareX) {
+          petition.bannerImageToShareX = (shareImages as any).bannerImageToShareX;
+        }
+      }
     }
     if (typeof youtubeUrl === 'string') {
       if (!isValidHttpUrl(youtubeUrl)) {

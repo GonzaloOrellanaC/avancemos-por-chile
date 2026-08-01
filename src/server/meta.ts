@@ -302,7 +302,8 @@ async function getRenderPayloadForRequest(requestPath: string): Promise<RenderPa
       return defaultPayload;
     }
 
-    const resolvedImageUrl = toAbsoluteAssetUrl(petition.bannerImage);
+    const resolvedShareImageUrl = toAbsoluteAssetUrl(petition.bannerImageToShare || petition.bannerImage || '');
+    const resolvedTwitterImageUrl = toAbsoluteAssetUrl(petition.bannerImageToShareX || petition.bannerImageToShare || petition.bannerImage || '');
     const descriptionSource = normalizeText(petition.summary) || getPostDescription(petition.content as ContentBlock[]);
     const description = truncateText(descriptionSource, 200);
 
@@ -310,7 +311,7 @@ async function getRenderPayloadForRequest(requestPath: string): Promise<RenderPa
       slug,
       petitionId: String(petition._id),
       title: petition.title,
-      resolvedImageUrl,
+      resolvedShareImageUrl,
     });
 
     return {
@@ -318,8 +319,8 @@ async function getRenderPayloadForRequest(requestPath: string): Promise<RenderPa
         title: `${petition.title} | Firmas | Avancemos Por Chile`,
         description,
         canonicalUrl: toCanonicalUrl(`/firma/${petition.slug}`),
-        imageUrl: resolvedImageUrl,
-        twitterImageUrl: resolvedImageUrl,
+        imageUrl: resolvedShareImageUrl,
+        twitterImageUrl: resolvedTwitterImageUrl,
         imageAlt: petition.title,
         ogType: 'website',
       },

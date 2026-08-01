@@ -19,6 +19,9 @@ const petitionSchema = new mongoose.Schema({
   slug: { type: String, required: true, unique: true, trim: true, lowercase: true, index: true },
   summary: { type: String, trim: true },
   bannerImage: { type: String },
+  // Imágenes generadas para compartir en redes (JPEG 1200x630 y 1600x900).
+  bannerImageToShare: { type: String },
+  bannerImageToShareX: { type: String },
   // Enlaces de video para mostrar junto a la iniciativa.
   youtubeUrl: { type: String, trim: true },
   tiktokUrl: { type: String, trim: true },
