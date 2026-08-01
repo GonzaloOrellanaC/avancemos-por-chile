@@ -252,7 +252,14 @@ export async function downloadPetitionReportPdf(
 
   const pdfMake: any = (pdfMakeModule as any).default ?? pdfMakeModule;
   const vfsFonts: any = (vfsModule as any).default ?? vfsModule;
-  pdfMake.vfs = vfsFonts.pdfMake?.vfs ?? vfsFonts.vfs;
+  // En el navegador (Vite) el import de vfs_fonts puede llegar como el mapa de fuentes
+  // directamente, o envuelto en { pdfMake: { vfs } } según el interop del bundle.
+  pdfMake.vfs = vfsFonts.pdfMake?.vfs ?? vfsFonts.vfs ?? vfsFonts;
+
+  // Verificación defensiva: si no hay fuentes, no intentar generar el PDF.
+  if (!pdfMake.vfs || typeof pdfMake.vfs !== 'object') {
+    throw new Error('No se pudieron cargar las fuentes del PDF');
+  }
 
   const [logo, isotipo] = await Promise.all([
     loadImageAsDataUrl('/logo-avancemosporchile.png'),
