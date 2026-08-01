@@ -102,17 +102,19 @@ function buildDocDefinition(
       paddingBottom: () => 6,
       fillColor: (rowIndex: number) => (rowIndex === 0 ? BRAND_BLUE : rowIndex % 2 === 0 ? '#F4F8FB' : '#FFFFFF'),
     },
-    widths: ['auto', '*', 'auto', '*', 'auto'],
-    body: [
-      [
-        { text: 'N°', color: '#FFFFFF', bold: true, alignment: 'center', fontSize: 8.5 },
-        { text: 'NOMBRE', color: '#FFFFFF', bold: true, fontSize: 8.5 },
-        { text: 'RUT', color: '#FFFFFF', bold: true, fontSize: 8.5 },
-        { text: 'COMUNA', color: '#FFFFFF', bold: true, fontSize: 8.5 },
-        { text: 'FECHA', color: '#FFFFFF', bold: true, alignment: 'center', fontSize: 8.5 },
+    table: {
+      widths: ['auto', '*', 'auto', '*', 'auto'],
+      body: [
+        [
+          { text: 'N°', color: '#FFFFFF', bold: true, alignment: 'center', fontSize: 8.5 },
+          { text: 'NOMBRE', color: '#FFFFFF', bold: true, fontSize: 8.5 },
+          { text: 'RUT', color: '#FFFFFF', bold: true, fontSize: 8.5 },
+          { text: 'COMUNA', color: '#FFFFFF', bold: true, fontSize: 8.5 },
+          { text: 'FECHA', color: '#FFFFFF', bold: true, alignment: 'center', fontSize: 8.5 },
+        ],
+        ...rows,
       ],
-      ...rows,
-    ],
+    },
   };
 
   const statsCells: any[] = [
@@ -164,19 +166,21 @@ function buildDocDefinition(
 
   const headerTable = {
     layout: 'noBorders',
-    widths: ['*', '*'],
-    body: [
-      [
-        headerLogo,
-        {
-          stack: [
-            { text: 'AVANCEMOS POR CHILE', fontSize: 9, bold: true, color: SLATE, characterSpacing: 1.4, alignment: 'right' },
-            { text: 'REPORTE DE FIRMAS', fontSize: 22, bold: true, color: BRAND_BLUE, alignment: 'right', margin: [0, 2, 0, 0] },
-            { text: 'Recolección oficial de firmas de iniciativas', fontSize: 9.5, color: SLATE, alignment: 'right', margin: [0, 2, 0, 0] },
-          ],
-        },
+    table: {
+      widths: ['*', '*'],
+      body: [
+        [
+          headerLogo,
+          {
+            stack: [
+              { text: 'AVANCEMOS POR CHILE', fontSize: 9, bold: true, color: SLATE, characterSpacing: 1.4, alignment: 'right' },
+              { text: 'REPORTE DE FIRMAS', fontSize: 22, bold: true, color: BRAND_BLUE, alignment: 'right', margin: [0, 2, 0, 0] },
+              { text: 'Recolección oficial de firmas de iniciativas', fontSize: 9.5, color: SLATE, alignment: 'right', margin: [0, 2, 0, 0] },
+            ],
+          },
+        ],
       ],
-    ],
+    },
   };
 
   return {
