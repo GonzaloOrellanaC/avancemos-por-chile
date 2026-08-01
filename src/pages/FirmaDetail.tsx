@@ -1,9 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Loader2, PenLine, Target, CheckCircle2, FileText, Download, User, Mail, MapPin, Fingerprint, AlertCircle, X, Youtube, Music2 } from 'lucide-react';
 import { isValidRut, formatRut } from '../lib/rut';
 import { getYouTubeEmbedUrl, getTikTokEmbedUrl } from '../lib/mediaEmbed';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import type { Swiper as SwiperType } from 'swiper';
+import { Zoom } from 'swiper/modules';
+import 'swiper/css';
+import 'swiper/css/zoom';
 
 interface ContentBlock {
   type: 'paragraph' | 'image' | 'pdf';
@@ -32,6 +37,7 @@ const FirmaDetail = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [bannerAspect, setBannerAspect] = useState<'2/1' | '1/1'>('2/1');
   const [previewOpen, setPreviewOpen] = useState(false);
+  const zoomSwiperRef = useRef<SwiperType | null>(null);
 
   const [user, setUser] = useState<any | null>(null);
   const [rut, setRut] = useState('');
@@ -259,19 +265,19 @@ const FirmaDetail = () => {
   const tiktokEmbedUrl = getTikTokEmbedUrl(petition.tiktokUrl);
 
   return (
-    <div className="min-h-screen pt-24 pb-24 bg-gray-50">
-      {/* Banner: foto con opacidad y relieve */}
-      <div className="relative h-[100px] w-full overflow-hidden bg-brand-blue/5">
+    <div className="min-h-screen pt-24 pb-24 relative bg-gray-50">
+      {/* Foto difuminada como fondo (en vez de un banner cortado) */}
+      <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
         {petition.bannerImage ? (
           <img
             src={petition.bannerImage}
             alt=""
-            className="w-full h-full object-cover opacity-25"
+            className="w-full h-full object-cover blur-2xl scale-110 opacity-30"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-r from-brand-blue/15 to-brand-red/10" />
+          <div className="w-full h-full bg-gradient-to-br from-brand-blue/10 via-gray-50 to-brand-red/10" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-gray-50 shadow-[inset_0_2px_10px_rgba(0,0,0,0.10),inset_0_-2px_10px_rgba(255,255,255,0.55)]" />
+        <div className="absolute inset-0 bg-gray-50/60" />
       </div>
 
       <div className="container mx-auto px-4 mt-8 relative z-10">
@@ -634,31 +640,55 @@ const FirmaDetail = () => {
         </div>
       </div>
 
-      {/* Vista previa casi full page */}
+      {/* Visor fullscreen con zoom (Swiper) */}
       {previewOpen && petition.bannerImage && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 p-4"
-          onClick={() => setPreviewOpen(false)}
+          className="fixed inset-0 z-[70] flex flex-col bg-black/95"
         >
-          <button
-            type="button"
-            onClick={() => setPreviewOpen(false)}
-            className="absolute right-5 top-5 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"
-            aria-label="Cerrar vista previa"
+          <div className="flex items-center justify-between gap-4 px-4 py-3">
+            <span className="text-white/60 text-xs font-semibold">
+              Doble clic o doble toque para hacer zoom · Pellizca para acercar
+            </span>
+            <button
+              type="button"
+              onClick={() => setPreviewOpen(false)}
+              className="shrink-0 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"
+              aria-label="Cerrar vista previa"
+            >
+              <X size={26} />
+            </button>
+          </div>
+
+          <div
+            className="relative flex-1 min-h-0"
+            onDoubleClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              zoomSwiperRef.current?.zoom?.toggle();
+            }}
           >
-            <X size={28} />
-          </button>
-          <motion.img
-            initial={{ scale: 0.95 }}
-            animate={{ scale: 1 }}
-            src={petition.bannerImage}
-            alt={petition.title}
-            className="max-h-[90vh] max-w-[92vw] rounded-2xl object-contain shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          />
+            <Swiper
+              modules={[Zoom]}
+              zoom={{ toggle: true, maxRatio: 4 }}
+              className="h-full"
+              onSwiper={(swiper) => {
+                zoomSwiperRef.current = swiper;
+              }}
+            >
+              <SwiperSlide>
+                <div className="swiper-zoom-container">
+                  <img
+                    src={petition.bannerImage}
+                    alt={petition.title}
+                    className="max-w-full max-h-full object-contain rounded-xl"
+                  />
+                </div>
+              </SwiperSlide>
+            </Swiper>
+          </div>
         </motion.div>
       )}
     </div>
