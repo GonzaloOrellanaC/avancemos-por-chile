@@ -238,6 +238,33 @@ function buildDocDefinition(
   };
 }
 
+function hasFontFiles(value: unknown): boolean {
+  return (
+    typeof value === 'object'
+    && value !== null
+    && 'Roboto-Regular.ttf' in (value as Record<string, unknown>)
+  );
+}
+
+/**
+ * Resuelve el mapa de fuentes de pdfmake sin importar cómo lo exponga el bundle:
+ * puede llegar como exportación nombrada `.v`, como `.default`, como el objeto
+ * mismo, o envuelto en `{ pdfMake: { vfs } }` / `{ vfs }`.
+ */
+function resolveVfsModule(module: any): any {
+  const candidates: any[] = module ? [module.v, module.default, module] : [];
+
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== 'object') continue;
+    if (hasFontFiles(candidate)) return candidate;
+    if (hasFontFiles(candidate.pdfMake?.vfs)) return candidate.pdfMake.vfs;
+    if (hasFontFiles(candidate.vfs)) return candidate.vfs;
+    if (hasFontFiles(candidate.default)) return candidate.default;
+  }
+
+  return module?.v ?? module?.default ?? module;
+}
+
 /**
  * Descarga el reporte PDF de firmas de una iniciativa usando pdfmake.
  */
@@ -245,19 +272,15 @@ export async function downloadPetitionReportPdf(
   petition: ReportPetition,
   signatures: ReportSignature[],
 ) {
-  const [pdfMakeModule, vfsModule] = await Promise.all([
-    import('pdfmake/build/pdfmake'),
-    import('pdfmake/build/vfs_fonts'),
-  ]);
+  const pdfMakeModule: any = await import('pdfmake/build/pdfmake');
+  const vfsModule: any = await import('pdfmake/build/vfs_fonts');
 
-  const pdfMake: any = (pdfMakeModule as any).default ?? pdfMakeModule;
-  const vfsFonts: any = (vfsModule as any).default ?? vfsModule;
-  // En el navegador (Vite) el import de vfs_fonts puede llegar como el mapa de fuentes
-  // directamente, o envuelto en { pdfMake: { vfs } } según el interop del bundle.
-  pdfMake.vfs = vfsFonts.pdfMake?.vfs ?? vfsFonts.vfs ?? vfsFonts;
+  // El bundle de pdfmake puede exponer el objeto como `.p`, `.default` o directamente.
+  const pdfMake = pdfMakeModule.p ?? pdfMakeModule.default ?? pdfMakeModule;
+  pdfMake.vfs = resolveVfsModule(vfsModule);
 
   // Verificación defensiva: si no hay fuentes, no intentar generar el PDF.
-  if (!pdfMake.vfs || typeof pdfMake.vfs !== 'object') {
+  if (!hasFontFiles(pdfMake.vfs)) {
     throw new Error('No se pudieron cargar las fuentes del PDF');
   }
 
